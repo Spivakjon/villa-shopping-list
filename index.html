@@ -36,17 +36,28 @@
     background:var(--card);border:1px solid var(--line);border-radius:16px;
     margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow);
   }
+  .cat.optional{border-color:#5a3a1a;border-style:dashed}
   .cathead{
     display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;
     user-select:none;background:var(--card2);
   }
+  .cat.optional .cathead{background:#231b12}
   .cathead .emoji{font-size:22px}
   .cathead h2{font-size:17px;margin:0;flex:1}
+  .opt-sub{display:block;font-size:11px;color:var(--warn);font-weight:600}
   .cathead .catname-input{flex:1;font-size:16px;font-weight:700}
   .catcount{font-size:12px;color:var(--muted);background:#161922;padding:3px 9px;border-radius:99px}
   .chev{transition:transform .2s;color:var(--muted)}
   .cat.collapsed .chev{transform:rotate(-90deg)}
   .cat.collapsed ul{display:none}
+  /* switch */
+  .switch{position:relative;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+  .switch .lbl{font-size:11px;font-weight:700;color:var(--warn)}
+  .switch input{display:none}
+  .slider{width:44px;height:25px;background:#3a3f4b;border-radius:99px;position:relative;transition:.2s;flex:none}
+  .slider::after{content:"";position:absolute;top:3px;right:3px;width:19px;height:19px;background:#fff;border-radius:50%;transition:.2s}
+  .switch input:checked + .slider{background:var(--accent)}
+  .switch input:checked + .slider::after{right:22px}
   ul{list-style:none;margin:0;padding:6px 8px 10px}
   li{
     display:flex;align-items:center;gap:12px;padding:11px 10px;border-radius:12px;
@@ -68,6 +79,11 @@
   .tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap}
   .tag.vegan{background:rgba(126,231,135,.14);color:var(--vegan)}
   .tag.note{background:rgba(255,180,84,.14);color:var(--warn)}
+  /* excluded optional items */
+  .cat.excluded ul{opacity:.4}
+  .cat.excluded li{pointer-events:none}
+  .excluded-badge{display:none;font-size:11px;color:var(--warn);padding:4px 12px 8px}
+  .cat.optional.excluded .excluded-badge{display:block}
   /* edit fields */
   input{
     font-family:inherit;color:var(--txt);background:#11141b;
@@ -81,9 +97,7 @@
     width:32px;height:32px;flex:none;border-radius:8px;border:1px solid var(--line);
     background:#221316;color:var(--danger);font-size:16px;cursor:pointer;display:grid;place-items:center;
   }
-  .additem{
-    display:flex;gap:8px;padding:6px 10px 4px;
-  }
+  .additem{display:flex;gap:8px;padding:6px 10px 4px}
   .additem button{
     width:100%;background:#16241a;border:1px dashed #2f5a3a;color:var(--accent);
     border-radius:10px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;
@@ -114,6 +128,10 @@
     border-radius:12px;padding:12px 14px;font-size:13px;color:#cfe4f7;margin-bottom:16px;
   }
   .note-block b{color:#fff}
+  .warn-block{
+    background:rgba(255,180,84,.08);border:1px solid rgba(255,180,84,.3);
+    border-radius:12px;padding:11px 14px;font-size:12.5px;color:#ffe2b8;margin-bottom:16px;
+  }
   /* meal plan */
   .meals{
     background:var(--card);border:1px solid var(--line);border-radius:16px;
@@ -121,20 +139,20 @@
   }
   .meals h2{font-size:17px;margin:0 0 4px}
   .meals .ms{color:var(--muted);font-size:12.5px;margin-bottom:14px}
-  .meal{
-    border-right:3px solid var(--accent2);padding:2px 12px 2px;margin-bottom:14px;
-  }
+  .meal{border-right:3px solid var(--accent2);padding:2px 12px 2px;margin-bottom:14px}
   .meal.grill{border-color:var(--warn)}
+  .meal.opt{border-color:#9a6a2a;border-style:none solid none none}
   .meal.veg{border-color:var(--vegan)}
   .meal h3{font-size:15px;margin:0 0 3px}
   .meal p{font-size:13px;color:var(--muted);margin:0}
   .meal .when{font-size:11px;color:var(--accent2);font-weight:700}
-  .meal.grill .when{color:var(--warn)}
+  .meal.grill .when,.meal.opt .when{color:var(--warn)}
   @media print{
     header{position:static}.footbar,#addcat,.additem,.editonly,.del{display:none!important}
     .cat,.cathead,.meals{background:#fff!important;box-shadow:none}
     body{background:#fff;color:#000;padding:0}.cat.collapsed ul{display:block}
-    .box{border-color:#000}.note-block{display:none}
+    .box{border-color:#000}.note-block,.warn-block{display:none}
+    .cat.excluded ul{opacity:1}
   }
 </style>
 </head>
@@ -155,43 +173,43 @@
 <!-- meal plan breakdown -->
 <main style="padding-top:0">
   <section class="meals">
-    <h2>🍽️ על אילו ארוחות בניתי את הכמויות</h2>
-    <div class="ms">סופ"ש של 2 לילות · 14 מנות מבוגר · בעיקר מנגל. כשתיתן לי את הארוחות המדויקות שלכם — אעדכן את הכמויות.</div>
+    <h2>🍽️ הארוחות שעליהן בנויה הרשימה</h2>
+    <div class="ms">סופ"ש 2 לילות · 14 מנות מבוגר. כמויות מותאמות לתכנון שלכם.</div>
+
+    <div class="meal opt">
+      <div class="when">🔥 על האש #1 · אופציונלי — לא סגור</div>
+      <h3>על האש #1 (במתג)</h3>
+      <p>אולי תקבלו ארוחת ערב מבחוץ. הקטגוריה "🔥 על האש #1" יושבת בצד עם <b>מתג הפעלה/כיבוי</b> — כשהוא דולק הבשר שלה נספר ברשימה, כשהוא כבוי הוא לא. החלטה של הרגע האחרון.</p>
+    </div>
 
     <div class="meal grill">
-      <div class="when">ערב 1 (שישי) · האירוע המרכזי</div>
-      <h3>🔥 מנגל גדול</h3>
-      <p>עיקר הבשר נופל כאן: פרגיות, כנפיים, המבורגרים, קבב, מרגז, אנטריקוט + פיתות/לחמניות, מטבלים, סלטים, ירקות לגריל (חציל/קישוא/תפו"א/בטטה).</p>
+      <div class="when">🔥 על האש #2 · סגור</div>
+      <h3>הגריל המרכזי</h3>
+      <p>פרגיות, כנפיים, קבב, מרגז, אנטריקוט + פיתות/לחמניות, מטבלים, סלטים וירקות לגריל.</p>
     </div>
 
     <div class="meal">
-      <div class="when">בוקר × 2–3 (שבת + אופציה ראשון)</div>
-      <h3>🍳 ארוחות בוקר</h3>
-      <p>30 ביצים, גבינות (צהובה/לבנה/בולגרית/קוטג'), לחם, ירקות לסלט, ממרחים (דבש/שוקולד), קפה/תה. שתייה חמה לכולם.</p>
+      <div class="when">🍔 צהריים</div>
+      <h3>המבורגרים</h3>
+      <p>24 המבורגרים בלחמניה + גבינה צהובה, חמוצים, בצל, רטבים, חסה ועגבניה.</p>
     </div>
 
     <div class="meal">
-      <div class="when">צהריים שבת</div>
-      <h3>🐟 צהריים קליל + דגים</h3>
-      <p>שאריות מנגל + סלמון בתנור/גריל (בקטנה, כמו שביקשת) + סלטים טריים. ארוחה רגועה.</p>
+      <div class="when">🍳 בוקר</div>
+      <h3>שקשוקה · ג'חנון · פנקייקים · קורנפלקס · חטיפים</h3>
+      <p>שקשוקה (ביצים, רסק, פלפלים, בצל), ג'חנון קפוא + עגבניה מגוררת + ביצים קשות + סחוג, תערובת פנקייק + מייפל/סילאן, קורנפלקס וחלב, וחטיפים.</p>
     </div>
 
     <div class="meal">
-      <div class="when">ערב 2 (שבת) · קליל</div>
-      <h3>🌭 ערב שני קליל</h3>
-      <p>על בסיס שאריות + נשנושים. אם תרצו ארוחה חמה (פסטה/אורז) — תגיד ואוסיף מצרכים.</p>
+      <div class="when">🌭 נשנוש / לילדים</div>
+      <h3>נקניקיות בלחמניה (בקר)</h3>
+      <p>נקניקיות בקר (הוט-דוג) + לחמניות הוט-דוג + חרדל/קטשופ — מנה מהירה לילדים ולאורך היום.</p>
     </div>
 
     <div class="meal veg">
-      <div class="when">לאורך כל הזמן</div>
-      <h3>🌱 2 טבעוניות + נשנושים</h3>
-      <p>תחליפים טבעוניים למנגל (נקניקיות/המבורגר טבעוני, טופו, תירס), חלב צמחי לבוקר. + חטיפים, פירות, קינוחים, משקאות וקרח לכל השהות.</p>
-    </div>
-
-    <div class="meal" style="border-color:var(--muted);margin-bottom:0">
-      <div class="when" style="color:var(--muted)">תשתית</div>
-      <h3>🍽️ חד-פעמי וציוד מנגל</h3>
-      <p>פחם, הצתה, נייר כסף ותבניות, צלחות/כוסות/סכו"ם חד-פעמי, מפיות, שקיות אשפה — לכל הסופ"ש.</p>
+      <div class="when">🐟 ל-2 הנשים</div>
+      <h3>סלמון</h3>
+      <p>פילה סלמון לתנור/גריל ל-2 הנשים (במקום בשר על האש).</p>
     </div>
   </section>
 </main>
@@ -209,19 +227,35 @@ const DEFAULT = [
     {n:"שקי פחם למנגל", q:"3–4 ק\"ג"},
     {n:"נוזל/קוביות הצתה + גפרורים", q:"1 סט"},
     {n:"נייר כסף + תבניות אלומיניום", q:"2 גליל + 4 תבניות"},
-    {n:"לחמניות המבורגר", q:"3 חבילות (~24)"},
-    {n:"פיתות", q:"2 חבילות"},
-    {n:"לחם פרוס / לבן", q:"2"},
-    {n:"ביצים", q:"30 (3 תבניות)"},
-    {n:"חלב", q:"3 ליטר"},
+    // --- בוקר: שקשוקה ---
+    {n:"ביצים", q:"36 (3 תבניות)"},
+    {n:"רסק/פסטת עגבניות לשקשוקה", q:"3 קופסאות"},
+    {n:"רוטב שקשוקה מוכן (אופציה)", q:"1", tag:"note"},
+    // --- בוקר: ג'חנון ---
+    {n:"ג'חנון קפוא", q:"3 חבילות"},
+    {n:"סחוג (לג'חנון)", q:"1"},
+    {n:"חילבה (אופציה)", q:"1", tag:"note"},
+    // --- בוקר: פנקייקים ---
+    {n:"תערובת פנקייק / קמח", q:"2"},
+    {n:"סירופ מייפל / סילאן", q:"1"},
+    {n:"אבקת אפייה (אם קמח רגיל)", q:"1", tag:"note"},
+    // --- בוקר: קורנפלקס + חלבי ---
+    {n:"קורנפלקס / דגני בוקר", q:"2–3"},
+    {n:"חלב", q:"4 ליטר"},
     {n:"חמאה", q:"1"},
-    {n:"גבינה צהובה פרוסה", q:"2 חבילות"},
     {n:"גבינה לבנה / קוטג'", q:"3"},
     {n:"גבינה בולגרית/פטה", q:"2"},
     {n:"שמנת חמוצה / לבנה", q:"2"},
-    {n:"דגני בוקר / קורנפלקס", q:"2"},
     {n:"דבש / ריבה / ממרח שוקולד", q:"לפי טעם"},
     {n:"קפה + תה + סוכר", q:"לפי צורך"},
+    // --- צהריים: המבורגרים ---
+    {n:"לחמניות המבורגר", q:"3 חבילות (~24)"},
+    {n:"גבינה צהובה פרוסה (לבורגר)", q:"2 חבילות"},
+    {n:"חמוצים / מלפפון חמוץ", q:"1 צנצנת"},
+    // --- נקניקיות בלחמניה ---
+    {n:"לחמניות הוט-דוג", q:"2 חבילות"},
+    // --- מנגל: לחם ומטבלים ---
+    {n:"פיתות", q:"2 חבילות"},
     {n:"חומוס מוכן", q:"3 קופסאות"},
     {n:"טחינה גולמית", q:"1 גדול"},
     {n:"מטבוחה / חציל במיונז", q:"2"},
@@ -229,16 +263,19 @@ const DEFAULT = [
     {n:"רוטב ברביקיו / צ'ילי מתוק", q:"1–2"},
     {n:"שמן זית + שמן קנולה", q:"1 מכל"},
     {n:"מלח גס + פלפל + פפריקה + כמון", q:"לפי צורך"},
+    // --- משקאות ---
     {n:"מים מינרליים (שישיות)", q:"3 שישיות"},
     {n:"קולה / סודה / מיצים", q:"6 בקבוקים"},
     {n:"בירה", q:"לפי טעם"},
     {n:"יין / אלכוהול", q:"לפי טעם"},
     {n:"קרח (שקיות)", q:"3–4 שקיות"},
+    // --- נשנושים וקינוח ---
     {n:"חטיפים (במבה/ביסלי/צ'יפס/בייגלה)", q:"מבחר"},
     {n:"פיצוחים", q:"לפי טעם"},
     {n:"עוגיות / וופלים / שוקולד", q:"מבחר"},
     {n:"גלידה / ארטיק", q:"2 קופסאות"},
     {n:"מרשמלו לאש (לילדים)", q:"1"},
+    // --- חד פעמי ---
     {n:"צלחות חד-פעמי (גדולות+קטנות)", q:"חבילה גדולה"},
     {n:"כוסות חד-פעמי", q:"חבילה"},
     {n:"סכו\"ם חד-פעמי", q:"חבילה"},
@@ -246,29 +283,34 @@ const DEFAULT = [
     {n:"שקיות אשפה גדולות", q:"גליל"},
     {n:"נייר טואלט + מגבת נייר", q:"חבילה"},
   ]},
-  {id:"vegan", emoji:"🌱", name:"מיוחד לטבעוניות (×2)", items:[
-    {n:"חלב שקדים / סויה / שיבולת שועל", q:"2 ליטר", tag:"vegan"},
-    {n:"נקניקיות / המבורגר טבעוני", q:"חבילה", tag:"vegan"},
-    {n:"שיפודי טופו / טופו מעושן", q:"2", tag:"vegan"},
-    {n:"קלחי תירס למנגל", q:"6", tag:"vegan"},
-    {n:"גבינה צהובה טבעונית / ממרח", q:"1", tag:"vegan"},
-    {n:"לחם/לחמניות בלי חמאה (לוודא)", q:"1", tag:"note"},
-  ]},
-  {id:"kazav", emoji:"🥩", name:"קצב", items:[
-    {n:"פרגיות עוף (לשיפודים/מנגל)", q:"2 ק\"ג"},
+
+  {id:"kazav", emoji:"🥩", name:"קצב — על האש #2 + צהריים", items:[
+    // על האש #2 (סגור)
+    {n:"פרגיות עוף", q:"2 ק\"ג"},
     {n:"כנפיים", q:"1.5 ק\"ג"},
-    {n:"המבורגרים", q:"16 יח'"},
-    {n:"נקניקיות / מרגז", q:"1.5 ק\"ג"},
     {n:"קבב / כפתה", q:"1.5 ק\"ג"},
+    {n:"מרגז / נקניקיות חריפות", q:"1 ק\"ג"},
     {n:"אנטריקוט / סינטה לסטייק", q:"1.5 ק\"ג"},
-    {n:"שיפודי פרגית/לבבות (אופציה)", q:"1 ק\"ג", tag:"note"},
+    // צהריים: המבורגרים
+    {n:"המבורגרים (לצהריים)", q:"24 יח'"},
+    // נקניקיות בלחמניה
+    {n:"נקניקיות בקר (הוט-דוג)", q:"2 חבילות (~24)"},
   ]},
+
+  {id:"grill1", emoji:"🔥", name:"על האש #1", optional:true, included:false, items:[
+    {n:"פרגיות עוף", q:"2 ק\"ג"},
+    {n:"כנפיים", q:"1 ק\"ג"},
+    {n:"קבב / כפתה", q:"1 ק\"ג"},
+    {n:"מרגז / נקניקיות חריפות", q:"1 ק\"ג"},
+    {n:"אנטריקוט / סטייק", q:"1.5 ק\"ג"},
+  ]},
+
   {id:"yarkan", emoji:"🥬", name:"ירקן", items:[
-    {n:"עגבניות", q:"2 ק\"ג"},
-    {n:"מלפפונים", q:"1.5 ק\"ג"},
-    {n:"בצל", q:"1 ק\"ג"},
+    {n:"עגבניות (סלט+שקשוקה+ג'חנון)", q:"2.5 ק\"ג"},
+    {n:"פלפלים אדום/צהוב (סלט+שקשוקה)", q:"1.5 ק\"ג"},
+    {n:"בצל", q:"1.5 ק\"ג"},
     {n:"בצל סגול", q:"0.5 ק\"ג"},
-    {n:"פלפלים אדום/צהוב", q:"1 ק\"ג"},
+    {n:"מלפפונים", q:"1.5 ק\"ג"},
     {n:"חסה", q:"3 ראשים"},
     {n:"לימונים", q:"1 ק\"ג"},
     {n:"שום", q:"2 ראשים"},
@@ -282,13 +324,14 @@ const DEFAULT = [
     {n:"אבטיח", q:"1 גדול"},
     {n:"מלון / ענבים / פירות לקינוח", q:"מבחר"},
   ]},
-  {id:"dagim", emoji:"🐟", name:"דגים (בקטנה)", items:[
-    {n:"פילה סלמון (לתנור/גריל)", q:"1–1.5 ק\"ג"},
-    {n:"דג לבר/דניס שלם (אופציה)", q:"3–4 יח'", tag:"note"},
+
+  {id:"dagim", emoji:"🐟", name:"דגים — סלמון ל-2 הנשים", items:[
+    {n:"פילה סלמון (ל-2 הנשים)", q:"0.6 ק\"ג"},
+    {n:"לימון + שמיר לסלמון", q:"לפי צורך"},
   ]},
 ];
 
-const KEY = "villa_shop_v2";
+const KEY = "villa_shop_v3";
 let uidc = 1;
 const uid = ()=> "i"+(uidc++)+"_"+Math.floor(Math.random()*1e6);
 let editing = false;
@@ -297,6 +340,7 @@ let state;
 function seed(){
   return DEFAULT.map(c=>({
     cid:"c"+(uidc++), emoji:c.emoji, name:c.name,
+    optional:!!c.optional, included:c.optional?!!c.included:true,
     items:c.items.map(it=>({uid:uid(), n:it.n, q:it.q, tag:it.tag||"", done:false}))
   }));
 }
@@ -305,6 +349,7 @@ function load(){
   return seed();
 }
 function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+function active(c){ return !c.optional || c.included; }
 
 state = load();
 
@@ -312,12 +357,17 @@ function render(){
   const app = document.getElementById("app");
   app.innerHTML = `
   <div class="note-block">
-    <b>סימון:</b> הקלקה על פריט = ✓. <b>עריכה:</b> כפתור "✎ עריכה" למטה — שינוי כמויות/שמות, הוספה ומחיקה.
-    הכל נשמר אוטומטית במכשיר.<br>
-    👶 <b>התינוק (חודשיים):</b> חלב אם/תמ"ל — לא נכלל. אל תשכחו חיתולים/מגבונים אישיים.
+    <b>סימון:</b> הקלקה על פריט = ✓. <b>עריכה:</b> כפתור "✎ עריכה" למטה.
+    <b>על האש #1:</b> המתג בכותרת הקטגוריה מוסיף/מוריד אותה מהחישוב. הכל נשמר אוטומטית.<br>
+    👶 התינוק לא נכלל. אל תשכחו חיתולים/מגבונים אישיים.
+  </div>
+  <div class="warn-block">
+    ⚠️ <b>לבדיקה:</b> קודם נאמר "2 טבעוניות", ועכשיו "סלמון ל-2 נשים". סלמון הוא דג ולא טבעוני —
+    הנחתי שמדובר ב-2 נשים שאוכלות דג במקום בשר. אם הן טבעוניות, תגיד לי ואחזיר תחליפים טבעוניים.
   </div>`;
 
   state.forEach(cat=>{
+    const on = active(cat);
     const total = cat.items.length;
     const done = cat.items.filter(i=>i.done).length;
     const lis = cat.items.map(it=>{
@@ -332,30 +382,42 @@ function render(){
         </span>
         ${tag}
         <span class="edit-row editonly">
-          <input class="ename" value="${esc(it.n)}" placeholder="פריט"
-                 oninput="upd('${it.uid}','n',this.value)">
-          <input class="eqty" value="${esc(it.q)}" placeholder="כמות"
-                 oninput="upd('${it.uid}','q',this.value)">
+          <input class="ename" value="${esc(it.n)}" placeholder="פריט" oninput="upd('${it.uid}','n',this.value)">
+          <input class="eqty" value="${esc(it.q)}" placeholder="כמות" oninput="upd('${it.uid}','q',this.value)">
           <button class="del" title="מחק" onclick="delItem('${it.uid}')">🗑</button>
         </span>
       </li>`;
     }).join("");
 
+    let countOrSwitch;
+    if(cat.optional){
+      countOrSwitch = `<label class="switch" onclick="event.stopPropagation()">
+        <span class="lbl">${on?"נכלל":"לא נכלל"}</span>
+        <input type="checkbox" ${on?"checked":""} onchange="toggleInclude('${cat.cid}')">
+        <span class="slider"></span>
+      </label>`;
+    }else{
+      countOrSwitch = `<span class="catcount viewonly" id="cc_${cat.cid}">${done}/${total}</span>`;
+    }
+    const nameHtml = cat.optional
+      ? `<h2 class="viewonly">${esc(cat.name)} <span class="opt-sub">אופציונלי — אולי אוכל מבחוץ</span></h2>`
+      : `<h2 class="viewonly">${esc(cat.name)}</h2>`;
+
     const sec = document.createElement("section");
-    sec.className = "cat";
+    sec.className = "cat" + (cat.optional?" optional":"") + (on?"":" excluded");
     sec.id = "cat_"+cat.cid;
     sec.innerHTML = `
       <div class="cathead" onclick="collapse(event,'${cat.cid}')">
         <span class="emoji">${cat.emoji}</span>
-        <h2 class="viewonly">${esc(cat.name)}</h2>
-        <input class="catname-input editonly" value="${esc(cat.name)}"
-               onclick="event.stopPropagation()" oninput="updCat('${cat.cid}',this.value)">
-        <span class="catcount viewonly" id="cc_${cat.cid}">${done}/${total}</span>
+        ${nameHtml}
+        <input class="catname-input editonly" value="${esc(cat.name)}" onclick="event.stopPropagation()" oninput="updCat('${cat.cid}',this.value)">
+        ${countOrSwitch}
         <span class="chev">▼</span>
       </div>
+      <div class="excluded-badge">⤵ הקטגוריה כבויה — לא נספרת בקנייה. הפעל את המתג כדי לכלול.</div>
       <ul>${lis}</ul>
       <div class="additem editonly">
-        <button onclick="addItem('${cat.cid}')">➕ הוסף פריט ל${esc(cat.name)}</button>
+        <button onclick="addItem('${cat.cid}')">➕ הוסף פריט</button>
       </div>`;
     app.appendChild(sec);
   });
@@ -367,13 +429,18 @@ function find(u){ for(const c of state){const it=c.items.find(x=>x.uid===u); if(
 
 function toggle(u){
   if(editing) return;
-  const r = find(u); if(!r) return;
+  const r = find(u); if(!r || !active(r.c)) return;
   r.it.done = !r.it.done; save();
   const li = document.querySelector(`li[data-uid="${u}"]`);
   li.classList.toggle("done", r.it.done);
   const done = r.c.items.filter(i=>i.done).length;
-  document.getElementById("cc_"+r.c.cid).textContent = done+"/"+r.c.items.length;
+  const cc = document.getElementById("cc_"+r.c.cid);
+  if(cc) cc.textContent = done+"/"+r.c.items.length;
   updateProgress();
+}
+function toggleInclude(cid){
+  const c = state.find(x=>x.cid===cid); if(!c) return;
+  c.included = !c.included; save(); render();
 }
 function upd(u,field,val){ const r=find(u); if(r){ r.it[field]=val; save(); } }
 function updCat(cid,val){ const c=state.find(x=>x.cid===cid); if(c){ c.name=val; save(); } }
@@ -385,16 +452,16 @@ function addItem(cid){
   if(lis.length) lis[lis.length-1].focus();
 }
 function addCategory(){
-  state.push({cid:"c"+(uidc++), emoji:"📦", name:"קטגוריה חדשה", items:[]}); save(); render();
+  state.push({cid:"c"+(uidc++), emoji:"📦", name:"קטגוריה חדשה", optional:false, included:true, items:[]}); save(); render();
 }
 function collapse(e,cid){
   if(editing) return;
-  if(e.target.closest("li")||e.target.closest("input")) return;
+  if(e.target.closest("li")||e.target.closest("input")||e.target.closest(".switch")) return;
   document.getElementById("cat_"+cid).classList.toggle("collapsed");
 }
 function updateProgress(){
   let total=0,done=0;
-  state.forEach(c=>c.items.forEach(i=>{total++; if(i.done) done++;}));
+  state.forEach(c=>{ if(!active(c)) return; c.items.forEach(i=>{total++; if(i.done) done++;}); });
   const pct=total?Math.round(done/total*100):0;
   document.getElementById("fill").style.width=pct+"%";
   document.getElementById("ptxt").textContent=done+" / "+total;
