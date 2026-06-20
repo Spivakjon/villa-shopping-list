@@ -159,7 +159,7 @@
 <body>
 <header>
   <h1>🏡 רשימת קניות – וילה סופ"ש</h1>
-  <div class="sub">5 משפחות · <b>10 מבוגרים</b> + <b>10 ילדים</b> (≈<b>4 מנות</b>) = <b>14 מנות</b> · 2 לילות · 👶 התינוק לא נכלל</div>
+  <div class="sub">5 משפחות · <b>10 מבוגרים</b> + <b>10 ילדים</b> (≈<b>4 מנות</b>) = <b>14 מנות</b> · 2 לילות</div>
   <div class="progwrap">
     <div class="progbar"><div class="progfill" id="fill"></div></div>
     <div class="progtxt" id="ptxt">0 / 0</div>
@@ -224,8 +224,7 @@
 <script>
 const DEFAULT = [
   {id:"super", emoji:"🛒", name:"סופר", items:[
-    {n:"שקי פחם למנגל", q:"3–4 ק\"ג"},
-    {n:"נוזל/קוביות הצתה + גפרורים", q:"1 סט"},
+    {n:"גז לגריל (בלון מלא / לוודא מילוי)", q:"1"},
     {n:"נייר כסף + תבניות אלומיניום", q:"2 גליל + 4 תבניות"},
     // --- בוקר: שקשוקה ---
     {n:"ביצים", q:"36 (3 תבניות)"},
@@ -331,7 +330,7 @@ const DEFAULT = [
   ]},
 ];
 
-const KEY = "villa_shop_v3";
+const KEY = "villa_shop_v4";
 let uidc = 1;
 const uid = ()=> "i"+(uidc++)+"_"+Math.floor(Math.random()*1e6);
 let editing = false;
@@ -355,16 +354,7 @@ state = load();
 
 function render(){
   const app = document.getElementById("app");
-  app.innerHTML = `
-  <div class="note-block">
-    <b>סימון:</b> הקלקה על פריט = ✓. <b>עריכה:</b> כפתור "✎ עריכה" למטה.
-    <b>על האש #1:</b> המתג בכותרת הקטגוריה מוסיף/מוריד אותה מהחישוב. הכל נשמר אוטומטית.<br>
-    👶 התינוק לא נכלל. אל תשכחו חיתולים/מגבונים אישיים.
-  </div>
-  <div class="warn-block">
-    ⚠️ <b>לבדיקה:</b> קודם נאמר "2 טבעוניות", ועכשיו "סלמון ל-2 נשים". סלמון הוא דג ולא טבעוני —
-    הנחתי שמדובר ב-2 נשים שאוכלות דג במקום בשר. אם הן טבעוניות, תגיד לי ואחזיר תחליפים טבעוניים.
-  </div>`;
+  app.innerHTML = "";
 
   state.forEach(cat=>{
     const on = active(cat);
