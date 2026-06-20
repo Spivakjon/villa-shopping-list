@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>רשימת קניות – וילה סופ"ש (5 משפחות)</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#1a1d24; --card2:#222631; --line:#2c313c;
+    --txt:#eef1f6; --muted:#9aa3b2; --accent:#37d67a; --accent2:#2fa9ff;
+    --done:#5b6472; --warn:#ffb454; --vegan:#7ee787; --danger:#ff5d5d;
+    --shadow:0 6px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;background:var(--bg);color:var(--txt);
+    font-family:"Segoe UI",Rubik,Arial,Helvetica,sans-serif;
+    padding:0 0 96px;line-height:1.5;
+  }
+  header{
+    position:sticky;top:0;z-index:20;
+    background:linear-gradient(180deg,#161922 0%,#13151c 100%);
+    border-bottom:1px solid var(--line);padding:14px 16px 12px;box-shadow:var(--shadow);
+  }
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:10px}
+  .sub b{color:var(--txt)}
+  .progwrap{display:flex;align-items:center;gap:10px}
+  .progbar{flex:1;height:10px;background:#252a34;border-radius:99px;overflow:hidden}
+  .progfill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .25s}
+  .progtxt{font-size:13px;color:var(--muted);min-width:74px;text-align:left}
+  .editbadge{display:none;margin-top:8px;font-size:12px;color:var(--warn);font-weight:600}
+  body.editing .editbadge{display:block}
+  main{max-width:760px;margin:0 auto;padding:16px}
+  .cat{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow);
+  }
+  .cathead{
+    display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;
+    user-select:none;background:var(--card2);
+  }
+  .cathead .emoji{font-size:22px}
+  .cathead h2{font-size:17px;margin:0;flex:1}
+  .cathead .catname-input{flex:1;font-size:16px;font-weight:700}
+  .catcount{font-size:12px;color:var(--muted);background:#161922;padding:3px 9px;border-radius:99px}
+  .chev{transition:transform .2s;color:var(--muted)}
+  .cat.collapsed .chev{transform:rotate(-90deg)}
+  .cat.collapsed ul{display:none}
+  ul{list-style:none;margin:0;padding:6px 8px 10px}
+  li{
+    display:flex;align-items:center;gap:12px;padding:11px 10px;border-radius:12px;
+    cursor:pointer;transition:background .15s;
+  }
+  li:active{background:#20242e}
+  li+li{border-top:1px solid #21252e}
+  .box{
+    width:24px;height:24px;flex:none;border:2px solid #4a5160;border-radius:7px;
+    display:grid;place-items:center;transition:all .15s;
+  }
+  .box svg{width:15px;height:15px;opacity:0;transform:scale(.5);transition:.15s}
+  li.done .box{background:var(--accent);border-color:var(--accent)}
+  li.done .box svg{opacity:1;transform:scale(1)}
+  .itxt{flex:1;min-width:0}
+  .iname{font-size:15px}
+  .iqty{font-size:12px;color:var(--muted)}
+  li.done .iname,li.done .iqty{color:var(--done);text-decoration:line-through}
+  .tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap}
+  .tag.vegan{background:rgba(126,231,135,.14);color:var(--vegan)}
+  .tag.note{background:rgba(255,180,84,.14);color:var(--warn)}
+  /* edit fields */
+  input{
+    font-family:inherit;color:var(--txt);background:#11141b;
+    border:1px solid var(--line);border-radius:8px;padding:7px 9px;outline:none;
+  }
+  input:focus{border-color:var(--accent2)}
+  .edit-row{display:flex;gap:8px;flex:1;align-items:center}
+  .edit-row .ename{flex:1;min-width:0}
+  .edit-row .eqty{width:108px;flex:none}
+  .del{
+    width:32px;height:32px;flex:none;border-radius:8px;border:1px solid var(--line);
+    background:#221316;color:var(--danger);font-size:16px;cursor:pointer;display:grid;place-items:center;
+  }
+  .additem{
+    display:flex;gap:8px;padding:6px 10px 4px;
+  }
+  .additem button{
+    width:100%;background:#16241a;border:1px dashed #2f5a3a;color:var(--accent);
+    border-radius:10px;padding:9px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .editonly{display:none}
+  body.editing .editonly{display:flex}
+  body.editing .viewonly{display:none}
+  #addcat{
+    display:none;width:100%;margin:0 0 20px;background:#15202b;border:1px dashed #2f5a7a;
+    color:var(--accent2);border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;
+  }
+  body.editing #addcat{display:block}
+  .footbar{
+    position:fixed;bottom:0;left:0;right:0;z-index:30;
+    background:#13151c;border-top:1px solid var(--line);
+    display:flex;gap:8px;padding:12px 16px;max-width:760px;margin:0 auto;
+  }
+  button.fb{
+    flex:1;font-family:inherit;font-size:13px;font-weight:600;color:var(--txt);
+    background:var(--card2);border:1px solid var(--line);border-radius:12px;
+    padding:12px 6px;cursor:pointer;
+  }
+  button.fb:active{background:#2b3140}
+  button.fb.primary{background:var(--accent2);border-color:var(--accent2);color:#031018}
+  button.fb.on{background:var(--warn);border-color:var(--warn);color:#2a1c00}
+  .note-block{
+    background:rgba(47,169,255,.07);border:1px solid rgba(47,169,255,.25);
+    border-radius:12px;padding:12px 14px;font-size:13px;color:#cfe4f7;margin-bottom:16px;
+  }
+  .note-block b{color:#fff}
+  /* meal plan */
+  .meals{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:16px 18px;margin-top:8px;box-shadow:var(--shadow);
+  }
+  .meals h2{font-size:17px;margin:0 0 4px}
+  .meals .ms{color:var(--muted);font-size:12.5px;margin-bottom:14px}
+  .meal{
+    border-right:3px solid var(--accent2);padding:2px 12px 2px;margin-bottom:14px;
+  }
+  .meal.grill{border-color:var(--warn)}
+  .meal.veg{border-color:var(--vegan)}
+  .meal h3{font-size:15px;margin:0 0 3px}
+  .meal p{font-size:13px;color:var(--muted);margin:0}
+  .meal .when{font-size:11px;color:var(--accent2);font-weight:700}
+  .meal.grill .when{color:var(--warn)}
+  @media print{
+    header{position:static}.footbar,#addcat,.additem,.editonly,.del{display:none!important}
+    .cat,.cathead,.meals{background:#fff!important;box-shadow:none}
+    body{background:#fff;color:#000;padding:0}.cat.collapsed ul{display:block}
+    .box{border-color:#000}.note-block{display:none}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏡 רשימת קניות – וילה סופ"ש</h1>
+  <div class="sub">5 משפחות · <b>10 מבוגרים</b> + <b>10 ילדים</b> (≈<b>4 מנות</b>) = <b>14 מנות</b> · 2 לילות · 👶 התינוק לא נכלל</div>
+  <div class="progwrap">
+    <div class="progbar"><div class="progfill" id="fill"></div></div>
+    <div class="progtxt" id="ptxt">0 / 0</div>
+  </div>
+  <div class="editbadge">✎ מצב עריכה פעיל — שנה כמויות/שמות, הוסף או מחק. הכל נשמר אוטומטית.</div>
+</header>
+
+<main id="app"></main>
+<button id="addcat" onclick="addCategory()">➕ הוסף קטגוריה</button>
+
+<!-- meal plan breakdown -->
+<main style="padding-top:0">
+  <section class="meals">
+    <h2>🍽️ על אילו ארוחות בניתי את הכמויות</h2>
+    <div class="ms">סופ"ש של 2 לילות · 14 מנות מבוגר · בעיקר מנגל. כשתיתן לי את הארוחות המדויקות שלכם — אעדכן את הכמויות.</div>
+
+    <div class="meal grill">
+      <div class="when">ערב 1 (שישי) · האירוע המרכזי</div>
+      <h3>🔥 מנגל גדול</h3>
+      <p>עיקר הבשר נופל כאן: פרגיות, כנפיים, המבורגרים, קבב, מרגז, אנטריקוט + פיתות/לחמניות, מטבלים, סלטים, ירקות לגריל (חציל/קישוא/תפו"א/בטטה).</p>
+    </div>
+
+    <div class="meal">
+      <div class="when">בוקר × 2–3 (שבת + אופציה ראשון)</div>
+      <h3>🍳 ארוחות בוקר</h3>
+      <p>30 ביצים, גבינות (צהובה/לבנה/בולגרית/קוטג'), לחם, ירקות לסלט, ממרחים (דבש/שוקולד), קפה/תה. שתייה חמה לכולם.</p>
+    </div>
+
+    <div class="meal">
+      <div class="when">צהריים שבת</div>
+      <h3>🐟 צהריים קליל + דגים</h3>
+      <p>שאריות מנגל + סלמון בתנור/גריל (בקטנה, כמו שביקשת) + סלטים טריים. ארוחה רגועה.</p>
+    </div>
+
+    <div class="meal">
+      <div class="when">ערב 2 (שבת) · קליל</div>
+      <h3>🌭 ערב שני קליל</h3>
+      <p>על בסיס שאריות + נשנושים. אם תרצו ארוחה חמה (פסטה/אורז) — תגיד ואוסיף מצרכים.</p>
+    </div>
+
+    <div class="meal veg">
+      <div class="when">לאורך כל הזמן</div>
+      <h3>🌱 2 טבעוניות + נשנושים</h3>
+      <p>תחליפים טבעוניים למנגל (נקניקיות/המבורגר טבעוני, טופו, תירס), חלב צמחי לבוקר. + חטיפים, פירות, קינוחים, משקאות וקרח לכל השהות.</p>
+    </div>
+
+    <div class="meal" style="border-color:var(--muted);margin-bottom:0">
+      <div class="when" style="color:var(--muted)">תשתית</div>
+      <h3>🍽️ חד-פעמי וציוד מנגל</h3>
+      <p>פחם, הצתה, נייר כסף ותבניות, צלחות/כוסות/סכו"ם חד-פעמי, מפיות, שקיות אשפה — לכל הסופ"ש.</p>
+    </div>
+  </section>
+</main>
+
+<div class="footbar">
+  <button class="fb" onclick="resetChecks()">↺ סימונים</button>
+  <button class="fb" id="editbtn" onclick="toggleEdit()">✎ עריכה</button>
+  <button class="fb" onclick="restoreDefault()">🗂️ ברירת מחדל</button>
+  <button class="fb primary" onclick="window.print()">🖨️ הדפסה</button>
+</div>
+
+<script>
+const DEFAULT = [
+  {id:"super", emoji:"🛒", name:"סופר", items:[
+    {n:"שקי פחם למנגל", q:"3–4 ק\"ג"},
+    {n:"נוזל/קוביות הצתה + גפרורים", q:"1 סט"},
+    {n:"נייר כסף + תבניות אלומיניום", q:"2 גליל + 4 תבניות"},
+    {n:"לחמניות המבורגר", q:"3 חבילות (~24)"},
+    {n:"פיתות", q:"2 חבילות"},
+    {n:"לחם פרוס / לבן", q:"2"},
+    {n:"ביצים", q:"30 (3 תבניות)"},
+    {n:"חלב", q:"3 ליטר"},
+    {n:"חמאה", q:"1"},
+    {n:"גבינה צהובה פרוסה", q:"2 חבילות"},
+    {n:"גבינה לבנה / קוטג'", q:"3"},
+    {n:"גבינה בולגרית/פטה", q:"2"},
+    {n:"שמנת חמוצה / לבנה", q:"2"},
+    {n:"דגני בוקר / קורנפלקס", q:"2"},
+    {n:"דבש / ריבה / ממרח שוקולד", q:"לפי טעם"},
+    {n:"קפה + תה + סוכר", q:"לפי צורך"},
+    {n:"חומוס מוכן", q:"3 קופסאות"},
+    {n:"טחינה גולמית", q:"1 גדול"},
+    {n:"מטבוחה / חציל במיונז", q:"2"},
+    {n:"קטשופ + חרדל + מיונז", q:"1 מכל"},
+    {n:"רוטב ברביקיו / צ'ילי מתוק", q:"1–2"},
+    {n:"שמן זית + שמן קנולה", q:"1 מכל"},
+    {n:"מלח גס + פלפל + פפריקה + כמון", q:"לפי צורך"},
+    {n:"מים מינרליים (שישיות)", q:"3 שישיות"},
+    {n:"קולה / סודה / מיצים", q:"6 בקבוקים"},
+    {n:"בירה", q:"לפי טעם"},
+    {n:"יין / אלכוהול", q:"לפי טעם"},
+    {n:"קרח (שקיות)", q:"3–4 שקיות"},
+    {n:"חטיפים (במבה/ביסלי/צ'יפס/בייגלה)", q:"מבחר"},
+    {n:"פיצוחים", q:"לפי טעם"},
+    {n:"עוגיות / וופלים / שוקולד", q:"מבחר"},
+    {n:"גלידה / ארטיק", q:"2 קופסאות"},
+    {n:"מרשמלו לאש (לילדים)", q:"1"},
+    {n:"צלחות חד-פעמי (גדולות+קטנות)", q:"חבילה גדולה"},
+    {n:"כוסות חד-פעמי", q:"חבילה"},
+    {n:"סכו\"ם חד-פעמי", q:"חבילה"},
+    {n:"מפיות + מגבונים", q:"2"},
+    {n:"שקיות אשפה גדולות", q:"גליל"},
+    {n:"נייר טואלט + מגבת נייר", q:"חבילה"},
+  ]},
+  {id:"vegan", emoji:"🌱", name:"מיוחד לטבעוניות (×2)", items:[
+    {n:"חלב שקדים / סויה / שיבולת שועל", q:"2 ליטר", tag:"vegan"},
+    {n:"נקניקיות / המבורגר טבעוני", q:"חבילה", tag:"vegan"},
+    {n:"שיפודי טופו / טופו מעושן", q:"2", tag:"vegan"},
+    {n:"קלחי תירס למנגל", q:"6", tag:"vegan"},
+    {n:"גבינה צהובה טבעונית / ממרח", q:"1", tag:"vegan"},
+    {n:"לחם/לחמניות בלי חמאה (לוודא)", q:"1", tag:"note"},
+  ]},
+  {id:"kazav", emoji:"🥩", name:"קצב", items:[
+    {n:"פרגיות עוף (לשיפודים/מנגל)", q:"2 ק\"ג"},
+    {n:"כנפיים", q:"1.5 ק\"ג"},
+    {n:"המבורגרים", q:"16 יח'"},
+    {n:"נקניקיות / מרגז", q:"1.5 ק\"ג"},
+    {n:"קבב / כפתה", q:"1.5 ק\"ג"},
+    {n:"אנטריקוט / סינטה לסטייק", q:"1.5 ק\"ג"},
+    {n:"שיפודי פרגית/לבבות (אופציה)", q:"1 ק\"ג", tag:"note"},
+  ]},
+  {id:"yarkan", emoji:"🥬", name:"ירקן", items:[
+    {n:"עגבניות", q:"2 ק\"ג"},
+    {n:"מלפפונים", q:"1.5 ק\"ג"},
+    {n:"בצל", q:"1 ק\"ג"},
+    {n:"בצל סגול", q:"0.5 ק\"ג"},
+    {n:"פלפלים אדום/צהוב", q:"1 ק\"ג"},
+    {n:"חסה", q:"3 ראשים"},
+    {n:"לימונים", q:"1 ק\"ג"},
+    {n:"שום", q:"2 ראשים"},
+    {n:"תפוחי אדמה (לתנור/אש)", q:"2 ק\"ג"},
+    {n:"בטטה", q:"1 ק\"ג"},
+    {n:"חצילים (לגריל)", q:"4"},
+    {n:"קישואים (לגריל)", q:"4"},
+    {n:"פטריות", q:"0.5 ק\"ג"},
+    {n:"אבוקדו", q:"5"},
+    {n:"פטרוזיליה / כוסברה / נענע", q:"צרור מכל אחד"},
+    {n:"אבטיח", q:"1 גדול"},
+    {n:"מלון / ענבים / פירות לקינוח", q:"מבחר"},
+  ]},
+  {id:"dagim", emoji:"🐟", name:"דגים (בקטנה)", items:[
+    {n:"פילה סלמון (לתנור/גריל)", q:"1–1.5 ק\"ג"},
+    {n:"דג לבר/דניס שלם (אופציה)", q:"3–4 יח'", tag:"note"},
+  ]},
+];
+
+const KEY = "villa_shop_v2";
+let uidc = 1;
+const uid = ()=> "i"+(uidc++)+"_"+Math.floor(Math.random()*1e6);
+let editing = false;
+let state;
+
+function seed(){
+  return DEFAULT.map(c=>({
+    cid:"c"+(uidc++), emoji:c.emoji, name:c.name,
+    items:c.items.map(it=>({uid:uid(), n:it.n, q:it.q, tag:it.tag||"", done:false}))
+  }));
+}
+function load(){
+  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s&&s.length) return s; }catch(e){}
+  return seed();
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+state = load();
+
+function render(){
+  const app = document.getElementById("app");
+  app.innerHTML = `
+  <div class="note-block">
+    <b>סימון:</b> הקלקה על פריט = ✓. <b>עריכה:</b> כפתור "✎ עריכה" למטה — שינוי כמויות/שמות, הוספה ומחיקה.
+    הכל נשמר אוטומטית במכשיר.<br>
+    👶 <b>התינוק (חודשיים):</b> חלב אם/תמ"ל — לא נכלל. אל תשכחו חיתולים/מגבונים אישיים.
+  </div>`;
+
+  state.forEach(cat=>{
+    const total = cat.items.length;
+    const done = cat.items.filter(i=>i.done).length;
+    const lis = cat.items.map(it=>{
+      const tag = it.tag==="vegan" ? `<span class="tag vegan viewonly">טבעוני</span>`
+                : it.tag==="note" ? `<span class="tag note viewonly">אופציה</span>` : "";
+      return `<li class="${it.done?'done':''}" data-uid="${it.uid}">
+        <span class="box viewonly" onclick="toggle('${it.uid}')">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#031018" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="itxt viewonly" onclick="toggle('${it.uid}')">
+          <span class="iname">${esc(it.n)}</span> <span class="iqty">· ${esc(it.q)}</span>
+        </span>
+        ${tag}
+        <span class="edit-row editonly">
+          <input class="ename" value="${esc(it.n)}" placeholder="פריט"
+                 oninput="upd('${it.uid}','n',this.value)">
+          <input class="eqty" value="${esc(it.q)}" placeholder="כמות"
+                 oninput="upd('${it.uid}','q',this.value)">
+          <button class="del" title="מחק" onclick="delItem('${it.uid}')">🗑</button>
+        </span>
+      </li>`;
+    }).join("");
+
+    const sec = document.createElement("section");
+    sec.className = "cat";
+    sec.id = "cat_"+cat.cid;
+    sec.innerHTML = `
+      <div class="cathead" onclick="collapse(event,'${cat.cid}')">
+        <span class="emoji">${cat.emoji}</span>
+        <h2 class="viewonly">${esc(cat.name)}</h2>
+        <input class="catname-input editonly" value="${esc(cat.name)}"
+               onclick="event.stopPropagation()" oninput="updCat('${cat.cid}',this.value)">
+        <span class="catcount viewonly" id="cc_${cat.cid}">${done}/${total}</span>
+        <span class="chev">▼</span>
+      </div>
+      <ul>${lis}</ul>
+      <div class="additem editonly">
+        <button onclick="addItem('${cat.cid}')">➕ הוסף פריט ל${esc(cat.name)}</button>
+      </div>`;
+    app.appendChild(sec);
+  });
+  updateProgress();
+}
+
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
+function find(u){ for(const c of state){const it=c.items.find(x=>x.uid===u); if(it) return {c,it};} return null; }
+
+function toggle(u){
+  if(editing) return;
+  const r = find(u); if(!r) return;
+  r.it.done = !r.it.done; save();
+  const li = document.querySelector(`li[data-uid="${u}"]`);
+  li.classList.toggle("done", r.it.done);
+  const done = r.c.items.filter(i=>i.done).length;
+  document.getElementById("cc_"+r.c.cid).textContent = done+"/"+r.c.items.length;
+  updateProgress();
+}
+function upd(u,field,val){ const r=find(u); if(r){ r.it[field]=val; save(); } }
+function updCat(cid,val){ const c=state.find(x=>x.cid===cid); if(c){ c.name=val; save(); } }
+function delItem(u){ const r=find(u); if(!r) return; r.c.items = r.c.items.filter(x=>x.uid!==u); save(); render(); }
+function addItem(cid){
+  const c=state.find(x=>x.cid===cid); if(!c) return;
+  c.items.push({uid:uid(), n:"", q:"", tag:"", done:false}); save(); render();
+  const lis=document.querySelectorAll(`#cat_${cid} .ename`);
+  if(lis.length) lis[lis.length-1].focus();
+}
+function addCategory(){
+  state.push({cid:"c"+(uidc++), emoji:"📦", name:"קטגוריה חדשה", items:[]}); save(); render();
+}
+function collapse(e,cid){
+  if(editing) return;
+  if(e.target.closest("li")||e.target.closest("input")) return;
+  document.getElementById("cat_"+cid).classList.toggle("collapsed");
+}
+function updateProgress(){
+  let total=0,done=0;
+  state.forEach(c=>c.items.forEach(i=>{total++; if(i.done) done++;}));
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById("fill").style.width=pct+"%";
+  document.getElementById("ptxt").textContent=done+" / "+total;
+}
+function toggleEdit(){
+  editing=!editing;
+  document.body.classList.toggle("editing",editing);
+  document.getElementById("editbtn").classList.toggle("on",editing);
+  document.getElementById("editbtn").textContent = editing ? "✓ סיום עריכה" : "✎ עריכה";
+}
+function resetChecks(){
+  if(!confirm("לאפס את כל הסימונים (ולהשאיר את הרשימה)?")) return;
+  state.forEach(c=>c.items.forEach(i=>i.done=false)); save(); render();
+}
+function restoreDefault(){
+  if(!confirm("לשחזר את רשימת ברירת המחדל? כל השינויים שלך יימחקו.")) return;
+  state=seed(); save(); render();
+}
+
+render();
+</script>
+</body>
+</html>
