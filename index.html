@@ -37,6 +37,55 @@
   .progtxt{font-size:13px;color:var(--muted);min-width:74px;text-align:left}
   .editbadge{display:none;margin-top:8px;font-size:12px;color:var(--warn);font-weight:600}
   body.editing .editbadge{display:block}
+  /* presence — מי מחובר עכשיו */
+  .presence{display:none;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px}
+  .presence.show{display:flex}
+  .presence .plabel{font-size:12px;color:var(--muted);margin-inline-end:2px}
+  .ppill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+         background:rgba(55,214,122,.10);border:1px solid rgba(55,214,122,.35);color:#bdeccd;
+         padding:3px 10px 3px 8px;border-radius:99px}
+  .ppill.me{background:rgba(47,169,255,.12);border-color:rgba(47,169,255,.4);color:#cfe4f7}
+  .ppill .pdot{width:7px;height:7px;border-radius:50%;background:var(--accent);
+         box-shadow:0 0 0 3px rgba(55,214,122,.18);flex:none}
+  .ppill.me .pdot{background:var(--accent2);box-shadow:0 0 0 3px rgba(47,169,255,.18)}
+  /* timeline nav — horizontal (mobile) */
+  .topnav{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:2px;scrollbar-width:none}
+  .topnav::-webkit-scrollbar{display:none}
+  .navchip{white-space:nowrap;font-size:12px;color:var(--muted);background:#161922;border:1px solid var(--line);
+           padding:5px 11px;border-radius:99px;cursor:pointer;text-decoration:none;flex:none}
+  .navchip.active{color:var(--txt);border-color:var(--accent);background:var(--card2)}
+  /* timeline nav — vertical (desktop) */
+  .sidenav{display:none}
+  .navhead{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:0 8px 6px}
+  @media(min-width:1120px){
+    .topnav{display:none}
+    .sidenav{display:flex;flex-direction:column;gap:1px;position:fixed;top:120px;right:24px;
+             width:190px;max-height:72vh;overflow:auto;z-index:15}
+  }
+  .navitem{position:relative;display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;
+           color:var(--muted);font-size:13px;cursor:pointer;text-decoration:none;border-right:2px solid transparent}
+  .navitem::before{content:"";position:absolute;right:11px;top:-1px;bottom:-1px;width:2px;background:#262b35;z-index:-1}
+  .navitem:first-child::before{top:50%}
+  .navitem:last-child::before{bottom:50%}
+  .navitem .navdot{width:9px;height:9px;border-radius:50%;background:#3a4150;flex:none;border:2px solid var(--bg)}
+  .navitem .navtxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .navitem.active{color:var(--txt);background:var(--card2);border-right-color:var(--accent)}
+  .navitem.active .navdot{background:var(--accent);box-shadow:0 0 0 3px rgba(55,214,122,.2)}
+  /* "מי מביא" category */
+  .cat.bringcat{border-color:#2f5a7a;border-style:dashed}
+  .cat.bringcat .cathead{background:#13202b}
+  .bring-sub{display:block;font-size:11px;color:var(--accent2);font-weight:600}
+  .cat.bringcat li.done .iname{text-decoration:none;color:var(--txt)}
+  .cat.bringcat li.done .box{background:var(--accent2);border-color:var(--accent2)}
+  .claimrow{margin-top:3px}
+  .claim{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#cfe4f7;
+         background:rgba(47,169,255,.12);border:1px solid rgba(47,169,255,.35);padding:2px 9px;border-radius:99px}
+  .claim b{color:#fff}
+  .claimhint{font-size:12px;color:var(--muted)}
+  /* personal reminders list */
+  .reminders .remlist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+  .reminders .remlist li{background:#161922;border:1px solid var(--line);border-radius:10px;
+         padding:9px 12px;font-size:14px}
   main{max-width:760px;margin:0 auto;padding:16px}
   .cat{
     background:var(--card);border:1px solid var(--line);border-radius:16px;
@@ -152,7 +201,7 @@
   .meal .when{font-size:11px;color:var(--accent2);font-weight:700}
   .meal.grill .when,.meal.opt .when{color:var(--warn)}
   @media print{
-    header{position:static}.footbar,#addcat,.additem,.editonly,.del,.toprow{display:none!important}
+    header{position:static}.footbar,#addcat,.additem,.editonly,.del,.toprow,.topnav,.sidenav,.presence{display:none!important}
     .cat,.cathead,.meals{background:#fff!important;box-shadow:none}
     body{background:#fff;color:#000;padding:0}.cat.collapsed ul{display:block}
     .box{border-color:#000}.warn-block{display:none}
@@ -168,12 +217,16 @@
     <span class="chip" id="conn">…</span>
     <span class="chip" id="namechip" onclick="changeName()">👤</span>
   </div>
+  <div class="presence" id="presence"></div>
   <div class="progwrap">
     <div class="progbar"><div class="progfill" id="fill"></div></div>
     <div class="progtxt" id="ptxt">0 / 0</div>
   </div>
   <div class="editbadge">✎ מצב עריכה פעיל — שנה כמויות/שמות, הוסף או מחק. הכל מסונכרן לכולם אוטומטית.</div>
+  <div class="topnav" id="topnav"></div>
 </header>
+
+<nav class="sidenav" id="sidenav"></nav>
 
 <main style="padding-bottom:0">
   <div class="warn-block" id="setupbanner" style="display:none">
@@ -184,6 +237,20 @@
 
 <main id="app"></main>
 <button id="addcat" onclick="addCategory()">➕ הוסף קטגוריה</button>
+
+<!-- personal reminders -->
+<main style="padding-top:0">
+  <section class="meals reminders">
+    <h2>📋 תזכורת אישית — אל תשכחו להביא</h2>
+    <div class="ms">לא חלק מהקנייה — כל אחד דואג לעצמו ולמשפחה שלו:</div>
+    <ul class="remlist">
+      <li>🛟 מצופים / שרוולים לילדים</li>
+      <li>🕶️ משקפי שמש</li>
+      <li>👙 בגדי ים + מגבות</li>
+      <li>🧥 משהו חם ללילה</li>
+    </ul>
+  </section>
+</main>
 
 <!-- meal plan breakdown -->
 <main style="padding-top:0">
@@ -337,6 +404,12 @@ const DEFAULT = [
     {n:"פילה סלמון (ל-2 הנשים)", q:"0.6 ק\"ג"},
     {n:"לימון + שמיר לסלמון", q:"לפי צורך"},
   ]},
+
+  {emoji:"🎒", name:"ציוד — מי מביא?", bring:true, items:[
+    {n:"מכונת ברד", q:""},
+    {n:"רמקול", q:""},
+    {n:"חומר נגד יתושים", q:""},
+  ]},
 ];
 
 /* ---------- מצב ---------- */
@@ -352,9 +425,17 @@ let editing = false;
 let collapsed = new Set();
 let pendingFocus = null;
 let uidc = 1;
+let es = null;                 // EventSource (presence + realtime)
+let navObserver = null;        // timeline active-section observer
 const writeTimers = {};
+const CID_KEY = "villa_cid";
 
 const newId = p => p + (uidc++) + "_" + Math.floor(Math.random()*1e6);
+function clientId(){
+  let c = localStorage.getItem(CID_KEY);
+  if(!c){ c = "u" + Date.now() + "_" + Math.floor(Math.random()*1e6); localStorage.setItem(CID_KEY, c); }
+  return c;
+}
 function TS(){ return Date.now(); }
 
 /* ---------- המרות עץ <-> מערך ---------- */
@@ -370,6 +451,7 @@ function buildObj(src){
     cats[cid] = {
       emoji:c.emoji, name:c.name, optional:!!c.optional,
       included: c.optional ? (c.included===undefined ? false : !!c.included) : true,
+      bring: !!c.bring,
       order:ci, items
     };
   });
@@ -378,7 +460,7 @@ function buildObj(src){
 function fromTree(t){
   return Object.entries((t&&t.cats)||{}).map(([cid,c])=>({
     cid, emoji:c.emoji, name:c.name,
-    optional:!!c.optional, included: c.optional ? !!c.included : true, order:c.order||0,
+    optional:!!c.optional, included: c.optional ? !!c.included : true, bring: !!c.bring, order:c.order||0,
     items: Object.entries(c.items||{}).map(([uid,it])=>({
       uid, n:it.n, q:it.q, tag:it.tag||"", done:!!it.done, by:it.by||"", at:it.at||0, order:it.order||0
     })).sort((a,b)=>a.order-b.order)
@@ -401,14 +483,35 @@ function apiUpdate(body){
   }).catch(()=>{});
 }
 function connectStream(){
+  try{ if(es) es.close(); }catch(e){}
   try{
-    const es = new EventSource(API_BASE+"/api/stream");
+    const name = localStorage.getItem(NAME_KEY) || "אנונימי";
+    const url = API_BASE + "/api/stream?cid=" + encodeURIComponent(clientId()) + "&name=" + encodeURIComponent(name);
+    es = new EventSource(url);
     es.onmessage = ev=>{
-      try{ const d = JSON.parse(ev.data); rev = d.rev; MODE = "cloud"; applyTree(d.tree);
-           setConn("🟢 ONLINE — מסונכרן לכולם","ok"); document.getElementById("setupbanner").style.display="none"; }catch(e){}
+      try{
+        const d = JSON.parse(ev.data);
+        if(d.users) renderPresence(d.users);
+        if(d.tree){ rev = d.rev; applyTree(d.tree); }
+        MODE = "cloud";
+        setConn("🟢 ONLINE — מסונכרן לכולם","ok");
+        document.getElementById("setupbanner").style.display="none";
+      }catch(e){}
     };
     es.onerror = ()=> setConn("🟠 מתחבר מחדש…","warn");
   }catch(e){}
+}
+function renderPresence(users){
+  const el = document.getElementById("presence");
+  if(!el) return;
+  if(!users || !users.length){ el.className = "presence"; el.innerHTML = ""; return; }
+  const mine = localStorage.getItem(CID_KEY);
+  el.className = "presence show";
+  el.innerHTML = `<span class="plabel">🟢 בעמוד עכשיו (${users.length}):</span>` +
+    users.map(u=>{
+      const me = u.cid === mine ? " me" : "";
+      return `<span class="ppill${me}"><span class="pdot"></span>${esc(u.name || "אנונימי")}${me?" (אני)":""}</span>`;
+    }).join("");
 }
 
 /* ---------- שכבת גישה (ענן/מקומי) ---------- */
@@ -452,9 +555,18 @@ function getName(){
 }
 function changeName(){
   const cur = localStorage.getItem(NAME_KEY) || "";
-  const n = prompt("השם שלך (יוצמד לעדכונים):", cur);
+  const n = prompt("השם שלך (כדי שכולם ידעו מי מחובר ומי עדכן):", cur);
   if(n===null) return;
-  localStorage.setItem(NAME_KEY, n.trim() || "אנונימי"); renderNameChip();
+  localStorage.setItem(NAME_KEY, n.trim() || "אנונימי");
+  renderNameChip();
+  if(MODE==="cloud") connectStream();   // התחבר מחדש כדי לעדכן את הנוכחות בשם החדש
+}
+function ensureName(){
+  if(!localStorage.getItem(NAME_KEY)){
+    const v = (prompt("ברוך הבא לרשימת הקניות 🛒\nמה השם שלך? (כדי שכולם ידעו מי מחובר ומי עדכן)")||"").trim();
+    localStorage.setItem(NAME_KEY, v || "אנונימי");
+    renderNameChip();
+  }
 }
 function renderNameChip(){
   const e = document.getElementById("namechip");
@@ -496,21 +608,35 @@ function render(){
     const lis = cat.items.map(it=>{
       const tag = it.tag==="vegan" ? `<span class="tag vegan viewonly">טבעוני</span>`
                 : it.tag==="note"  ? `<span class="tag note viewonly">אופציה</span>` : "";
+      const checkSvg = `<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#031018" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      const editRow = `<span class="edit-row editonly">
+          <input class="ename" value="${esc(it.n)}" placeholder="פריט" oninput="upd('${it.uid}','n',this.value)">
+          <input class="eqty" value="${esc(it.q)}" placeholder="${cat.bring?'הערה':'כמות'}" oninput="upd('${it.uid}','q',this.value)">
+          <button class="del" title="מחק" onclick="delItem('${it.uid}')">🗑</button>
+        </span>`;
+      if(cat.bring){
+        const claim = (it.done && it.by)
+          ? `<span class="claim">🙋 <b>${esc(it.by)}</b> מביא/ה</span>`
+          : `<span class="claimhint">לחצו כדי לסמן «אני מביא»</span>`;
+        return `<li class="${it.done?'done claimed':''}" data-uid="${it.uid}">
+          <span class="box viewonly" onclick="toggle('${it.uid}')">${checkSvg}</span>
+          <span class="itxt viewonly" onclick="toggle('${it.uid}')">
+            <span class="iname">${esc(it.n)}</span>${it.q?` <span class="iqty">· ${esc(it.q)}</span>`:""}
+            <div class="claimrow">${claim}</div>
+          </span>
+          ${tag}
+          ${editRow}
+        </li>`;
+      }
       const meta = it.by ? `<div class="meta">✎ <b>${esc(it.by)}</b> · ${fmtTime(it.at)}</div>` : "";
       return `<li class="${it.done?'done':''}" data-uid="${it.uid}">
-        <span class="box viewonly" onclick="toggle('${it.uid}')">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#031018" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </span>
+        <span class="box viewonly" onclick="toggle('${it.uid}')">${checkSvg}</span>
         <span class="itxt viewonly" onclick="toggle('${it.uid}')">
           <span class="iname">${esc(it.n)}</span> <span class="iqty">· ${esc(it.q)}</span>
           ${meta}
         </span>
         ${tag}
-        <span class="edit-row editonly">
-          <input class="ename" value="${esc(it.n)}" placeholder="פריט" oninput="upd('${it.uid}','n',this.value)">
-          <input class="eqty" value="${esc(it.q)}" placeholder="כמות" oninput="upd('${it.uid}','q',this.value)">
-          <button class="del" title="מחק" onclick="delItem('${it.uid}')">🗑</button>
-        </span>
+        ${editRow}
       </li>`;
     }).join("");
 
@@ -526,10 +652,12 @@ function render(){
     }
     const nameHtml = cat.optional
       ? `<h2 class="viewonly">${esc(cat.name)} <span class="opt-sub">אופציונלי — אולי אוכל מבחוץ</span></h2>`
+      : cat.bring
+      ? `<h2 class="viewonly">${esc(cat.name)} <span class="bring-sub">כל אחד מסמן מה הוא מביא 🙋</span></h2>`
       : `<h2 class="viewonly">${esc(cat.name)}</h2>`;
 
     const sec = document.createElement("section");
-    sec.className = "cat" + (cat.optional?" optional":"") + (on?"":" excluded") + (collapsed.has(cat.cid)?" collapsed":"");
+    sec.className = "cat" + (cat.optional?" optional":"") + (cat.bring?" bringcat":"") + (on?"":" excluded") + (collapsed.has(cat.cid)?" collapsed":"");
     sec.id = "cat_"+cat.cid;
     sec.innerHTML = `
       <div class="cathead" onclick="collapse(event,'${cat.cid}')">
@@ -545,6 +673,7 @@ function render(){
     app.appendChild(sec);
   });
 
+  buildNav();
   updateProgress();
 
   if(fi){
@@ -565,6 +694,39 @@ function updateProgress(){
   const pct = total ? Math.round(done/total*100) : 0;
   document.getElementById("fill").style.width = pct+"%";
   document.getElementById("ptxt").textContent = done+" / "+total;
+}
+
+/* ---------- ניווט / טיימליין בין הקטגוריות ---------- */
+function buildNav(){
+  const side = document.getElementById("sidenav");
+  const top  = document.getElementById("topnav");
+  if(!side || !top) return;
+  side.innerHTML = `<div class="navhead">מסלול הרשימה</div>` + state.map(c=>
+    `<a class="navitem" data-cid="${c.cid}" onclick="jumpTo('${c.cid}')">
+       <span class="navdot"></span><span class="navtxt">${esc(c.emoji)} ${esc(c.name)}</span></a>`).join("");
+  top.innerHTML = state.map(c=>
+    `<a class="navchip" data-cid="${c.cid}" onclick="jumpTo('${c.cid}')">${esc(c.emoji)} ${esc(c.name)}</a>`).join("");
+  observeSections();
+}
+function jumpTo(cid){
+  const el = document.getElementById("cat_"+cid); if(!el) return;
+  if(collapsed.has(cid)){ collapsed.delete(cid); el.classList.remove("collapsed"); }
+  const h = (document.querySelector("header")||{}).offsetHeight || 80;
+  const y = el.getBoundingClientRect().top + window.scrollY - h - 8;
+  window.scrollTo({top:y, behavior:"smooth"});
+  setActiveNav(cid);
+}
+function setActiveNav(cid){
+  document.querySelectorAll(".navitem,.navchip").forEach(n=> n.classList.toggle("active", n.dataset.cid===cid));
+  const chip = document.querySelector(".navchip.active");
+  if(chip) chip.scrollIntoView({inline:"center", block:"nearest"});
+}
+function observeSections(){
+  if(navObserver) navObserver.disconnect();
+  navObserver = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting) setActiveNav(e.target.id.replace("cat_","")); });
+  }, {rootMargin:"-120px 0px -65% 0px", threshold:0});
+  state.forEach(c=>{ const el=document.getElementById("cat_"+c.cid); if(el) navObserver.observe(el); });
 }
 
 /* ---------- פעולות ---------- */
@@ -631,6 +793,7 @@ function setConn(text, cls){ const e=document.getElementById("conn"); e.textCont
 
 async function init(){
   renderNameChip();
+  ensureName();   // בקש שם מכל אחד בכניסה — כדי שהנוכחות תציג מי זה
   try{
     const st = await apiState();
     MODE = "cloud"; rev = st.rev;
