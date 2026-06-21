@@ -91,6 +91,22 @@
   .reminders .remlist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
   .reminders .remlist li{background:#161922;border:1px solid var(--line);border-radius:10px;
          padding:9px 12px;font-size:14px}
+  /* search */
+  .searchbar{display:flex;align-items:center;gap:8px;margin:0 0 10px;background:#11141b;
+             border:1px solid var(--line);border-radius:10px;padding:4px 10px}
+  .searchbar:focus-within{border-color:var(--accent2)}
+  .searchbar .searchicon{font-size:14px;opacity:.8;flex:none}
+  .searchbar input{flex:1;background:transparent;border:none;color:var(--txt);font-size:14px;padding:7px 2px}
+  .searchbar input:focus{outline:none}
+  #searchclear{flex:none;background:#222631;border:1px solid var(--line);color:var(--muted);
+             width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px}
+  .noresults{text-align:center;color:var(--muted);padding:30px 16px;font-size:14px}
+  /* move item between categories (edit mode) */
+  .moverow{flex-basis:100%;display:flex;align-items:center;gap:8px;margin-top:2px}
+  .movelbl{font-size:12px;color:var(--muted);white-space:nowrap;flex:none}
+  .movesel{flex:1;font-family:inherit;color:var(--txt);background:#11141b;border:1px solid var(--line);
+           border-radius:8px;padding:7px 9px;font-size:13px;cursor:pointer}
+  .movesel:focus{outline:none;border-color:var(--accent2)}
   main{max-width:760px;margin:0 auto;padding:16px}
   .cat{
     background:var(--card);border:1px solid var(--line);border-radius:16px;
@@ -154,7 +170,7 @@
     border:1px solid var(--line);border-radius:8px;padding:7px 9px;outline:none;
   }
   input:focus{border-color:var(--accent2)}
-  .edit-row{display:flex;gap:8px;flex:1;align-items:center}
+  .edit-row{display:flex;gap:8px;flex:1;align-items:center;flex-wrap:wrap}
   .edit-row .ename{flex:1;min-width:0}
   .edit-row .eqty{width:108px;flex:none}
   .del{
@@ -224,6 +240,11 @@
     <span class="chip" id="namechip" onclick="changeName()">👤</span>
   </div>
   <div class="presence" id="presence"></div>
+  <div class="searchbar">
+    <span class="searchicon">🔍</span>
+    <input id="search" type="search" autocomplete="off" placeholder="חיפוש פריט בכל הרשימה…" oninput="onSearch(this.value)">
+    <button id="searchclear" type="button" onclick="clearSearch()" aria-label="נקה" style="display:none">✕</button>
+  </div>
   <div class="progwrap">
     <div class="progbar"><div class="progfill" id="fill"></div></div>
     <div class="progtxt" id="ptxt">0 / 0</div>
@@ -434,6 +455,7 @@ let uidc = 1;
 let es = null;                 // EventSource (presence + realtime)
 let navObserver = null;        // timeline active-section observer
 let pendingTree = null;        // עץ ממתין שהתקבל בזמן הקלדה — מוחל אחרי שמסיימים
+let searchQuery = "";          // טקסט חיפוש פעיל
 const writeTimers = {};
 const CID_KEY = "villa_cid";
 
@@ -629,17 +651,28 @@ function render(){
   }
 
   app.innerHTML = "";
+  const q = searchQuery.trim().toLowerCase();
+  const matchIt = it => !q || (((it.n||"")+" "+(it.q||"")).toLowerCase().includes(q));
+  const moveOpts = state.map(cc=>`<option value="${cc.cid}">${esc((cc.emoji||"📦")+" "+(cc.name||"ללא שם"))}</option>`).join("");
+  const visibleCats = [];
   state.forEach(cat=>{
+    const items = q ? cat.items.filter(matchIt) : cat.items;
+    if(q && items.length===0) return;          // אין התאמות בחיפוש — מסתירים את הקטגוריה
+    visibleCats.push(cat);
     const on = active(cat);
-    const total = cat.items.length, done = cat.items.filter(i=>i.done).length;
-    const lis = cat.items.map(it=>{
+    const total = items.length, done = items.filter(i=>i.done).length;
+    const lis = items.map(it=>{
       const tag = it.tag==="vegan" ? `<span class="tag vegan viewonly">טבעוני</span>`
                 : it.tag==="note"  ? `<span class="tag note viewonly">אופציה</span>` : "";
       const checkSvg = `<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#031018" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      const sel = moveOpts.replace(`value="${cat.cid}">`, `value="${cat.cid}" selected>`);
       const editRow = `<span class="edit-row editonly">
           <input class="ename" value="${esc(it.n)}" placeholder="פריט" oninput="upd('${it.uid}','n',this.value)">
           <input class="eqty" value="${esc(it.q)}" placeholder="${cat.bring?'הערה':'כמות'}" oninput="upd('${it.uid}','q',this.value)">
           <button class="del" title="מחק" onclick="delItem('${it.uid}')">🗑</button>
+          <span class="moverow"><span class="movelbl">↪ העבר ל:</span>
+            <select class="movesel" title="העבר לקטגוריה" onclick="event.stopPropagation()" onchange="moveItem('${it.uid}', this.value)">${sel}</select>
+          </span>
         </span>`;
       const prevTag = it.prevBy ? `<s>${esc(it.prevBy)}</s> ` : "";
       if(cat.bring){
@@ -685,7 +718,7 @@ function render(){
       : `<h2 class="viewonly">${esc(cat.name)}</h2>`;
 
     const sec = document.createElement("section");
-    sec.className = "cat" + (cat.optional?" optional":"") + (cat.bring?" bringcat":"") + (on?"":" excluded") + (collapsed.has(cat.cid)?" collapsed":"");
+    sec.className = "cat" + (cat.optional?" optional":"") + (cat.bring?" bringcat":"") + (on?"":" excluded") + ((!q && collapsed.has(cat.cid))?" collapsed":"");
     sec.id = "cat_"+cat.cid;
     sec.innerHTML = `
       <div class="cathead" onclick="collapse(event,'${cat.cid}')">
@@ -701,7 +734,10 @@ function render(){
     app.appendChild(sec);
   });
 
-  buildNav();
+  if(q && visibleCats.length===0){
+    app.innerHTML = `<div class="noresults">אין תוצאות לחיפוש «${esc(searchQuery.trim())}» 🔍</div>`;
+  }
+  buildNav(visibleCats);
   updateProgress();
 
   if(fi){
@@ -725,16 +761,17 @@ function updateProgress(){
 }
 
 /* ---------- ניווט / טיימליין בין הקטגוריות ---------- */
-function buildNav(){
+function buildNav(list){
+  const cats = list || state;
   const side = document.getElementById("sidenav");
   const top  = document.getElementById("topnav");
   if(!side || !top) return;
-  side.innerHTML = `<div class="navhead">📍 קטגוריות — קפיצה מהירה</div>` + state.map(c=>
+  side.innerHTML = `<div class="navhead">📍 קטגוריות — קפיצה מהירה</div>` + cats.map(c=>
     `<a class="navitem" data-cid="${c.cid}" onclick="jumpTo('${c.cid}')">
        <span class="navdot"></span><span class="navtxt">${esc(c.emoji)} ${esc(c.name)}</span></a>`).join("");
-  top.innerHTML = `<span class="topnav-lbl">📍 קפיצה:</span>` + state.map(c=>
+  top.innerHTML = `<span class="topnav-lbl">📍 קפיצה:</span>` + cats.map(c=>
     `<a class="navchip" data-cid="${c.cid}" onclick="jumpTo('${c.cid}')">${esc(c.emoji)} ${esc(c.name)}</a>`).join("");
-  observeSections();
+  observeSections(cats);
 }
 function jumpTo(cid){
   const el = document.getElementById("cat_"+cid); if(!el) return;
@@ -749,12 +786,24 @@ function setActiveNav(cid){
   const chip = document.querySelector(".navchip.active");
   if(chip) chip.scrollIntoView({inline:"center", block:"nearest"});
 }
-function observeSections(){
+function observeSections(list){
   if(navObserver) navObserver.disconnect();
   navObserver = new IntersectionObserver(entries=>{
     entries.forEach(e=>{ if(e.isIntersecting) setActiveNav(e.target.id.replace("cat_","")); });
   }, {rootMargin:"-120px 0px -65% 0px", threshold:0});
-  state.forEach(c=>{ const el=document.getElementById("cat_"+c.cid); if(el) navObserver.observe(el); });
+  (list||state).forEach(c=>{ const el=document.getElementById("cat_"+c.cid); if(el) navObserver.observe(el); });
+}
+/* ---------- חיפוש ---------- */
+function onSearch(v){
+  searchQuery = v || "";
+  document.getElementById("searchclear").style.display = searchQuery ? "" : "none";
+  render();
+}
+function clearSearch(){
+  searchQuery = "";
+  const s = document.getElementById("search"); if(s) s.value = "";
+  document.getElementById("searchclear").style.display = "none";
+  render();
 }
 
 /* ---------- פעולות ---------- */
@@ -807,6 +856,17 @@ function updCat(cid, val){
   scheduleWrite(`cat|${cid}`, ()=> commit({ [`cats/${cid}/name`]:val, [`cats/${cid}/by`]:by, [`cats/${cid}/at`]:TS() }));
 }
 function delItem(u){ const r = find(u); if(!r) return; removeNode(`cats/${r.c.cid}/items/${u}`); }
+function moveItem(u, targetCid){
+  const r = find(u); if(!r) return;
+  if(!targetCid || targetCid===r.c.cid) return;          // אותה קטגוריה — אין מה לעשות
+  const t = state.find(x=>x.cid===targetCid); if(!t) return;
+  const order = t.items.reduce((m,i)=>Math.max(m,i.order||0),0)+1;
+  const it = r.it;
+  const value = {n:it.n, q:it.q, tag:it.tag||"", done:!!it.done, by:it.by||"", prevBy:it.prevBy||"", at:it.at||0, order};
+  const src = `cats/${r.c.cid}/items/${u}`, dst = `cats/${targetCid}/items/${u}`;
+  if(MODE==="cloud"){ apiUpdate({ setNode:{path:dst, value}, remove:[src] }); }
+  else { setP(tree, dst, value); delP(tree, src); localSave(); applyTree(tree); }
+}
 function addItem(cid){
   const c = state.find(x=>x.cid===cid); if(!c) return;
   const order = c.items.reduce((m,i)=>Math.max(m,i.order||0),0)+1;
