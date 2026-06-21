@@ -1,40 +1,57 @@
 # CLAUDE.md — villa-shopping-list
 
-הנחיות לסשנים עתידיים של Claude שעובדים על הפרויקט הזה.
+הנחיות לסשנים עתידיים של Claude. הפרויקט הוא רשימת קניות **משותפת אונליין** ל-5 משפחות (וילה סופ"ש). עברית RTL, נייד.
 
-## מה זה
-דף HTML יחיד (`index.html`) — רשימת קניות אינטראקטיבית בעברית RTL לסופ"ש של 5 משפחות בווילה. vanilla JS, ללא build, ללא תלויות.
+## ארכיטקטורה (חשוב!)
+מערכת בשני חלקים:
+1. **Backend (מקור האמת):** שרת Node טהור (ללא תלויות) על **Railway**.
+   - מונורפו: `C:\Users\spiva\OneDrive\Desktop\כללי פרויקטים\Projects\villa-shop\` → `server.js`, `package.json`, `public/index.html`.
+   - Railway project `villa-shop`, service id `57f5ca3d-6aff-4f0f-aa4a-c019727d829f`, URL `https://villa-shop-production.up.railway.app`.
+   - Volume מחובר ב-`/data` (env `DATA_DIR=/data`). מצב הרשימה ב-`/data/villa-state.json`, גיבויים ב-`/data/backups/`.
+2. **Frontend (פריסה):** GitHub Pages — ריפו `Spivakjon/villa-shopping-list`, `index.html` בשורש, ענף `main`, URL `https://spivakjon.github.io/villa-shopping-list/`.
 
-## שני מיקומי קבצים (חשוב!)
-- **מקור עבודה ראשי:** `C:\Users\spiva\OneDrive\Desktop\כללי פרויקטים\Projects\villa-shopping-list.html`
-- **ריפו/פריסה:** `C:\Users\spiva\villa-shopping-list\index.html`
-
-עורכים את **המקור** ב-Projects, ואז **מעתיקים** אותו ל-`index.html` בריפו לפני push. שמור על שני הקבצים מסונכרנים.
+### שני עותקי הקליינט (לשמור מסונכרנים!)
+- **מקור קנוני:** `villa-shop/public/index.html` עם `const API_BASE = "";` (מוגש ע"י השרת באותו origin).
+- **עותק פריסה:** `index.html` בריפו — זהה, אבל `API_BASE = "https://villa-shop-production.up.railway.app"` (cross-origin).
+- זרימת עריכה: ערוך את `villa-shop/public/index.html` → העתק לריפו → החלף `API_BASE=""` לכתובת Railway → `git push`.
 
 ## פריסה
-- GitHub: `Spivakjon/villa-shopping-list` (public), ענף `main`, GitHub Pages משורש.
-- URL חי: https://spivakjon.github.io/villa-shopping-list/
-- זרימה: ערוך מקור → `Copy-Item` ל-`index.html` → `git add/commit/push` → Pages מתעדכן תוך ~1 דקה.
-- commit ללא חתימה: `git -c commit.gpgsign=false commit ...`. סיים הודעות commit ב-`Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
-- אימות: poll את ה-URL (עם `?v=` כדי לעקוף cache) עד שהתוכן החדש מופיע.
+- **שרת (אחרי שינוי ב-server.js):** `cd villa-shop && railway up --ci -s 57f5ca3d-6aff-4f0f-aa4a-c019727d829f`. ה-`rev` הוא in-memory ומתאפס ל-1 בכל redeploy — תקין; הלקוחות מקבלים עץ מלא ב-SSE. ה-Volume שומר את הנתונים בין פריסות. `.gitignore` מחריג `node_modules/ backups/ villa-state.json`.
+- **קליינט (Pages):** העתק → החלף API_BASE → `git push`. Pages מתעדכן ~1 דקה. אמת ב-`curl` (grep לסטרינג חדש).
+- commit: `git -c user.name="Spivakjon" -c user.email="spivak123@gmail.com" commit`. סיים ב-`Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
 
-## ארכיטקטורת הקוד (הכל ב-`index.html`)
-- `DEFAULT` — מערך הקטגוריות וברירת המחדל של הפריטים. **כאן משנים כמויות/פריטים.**
-- כל קטגוריה: `{id, emoji, name, optional?, included?, items:[{n, q, tag?}]}`.
-  - `optional:true` + `included` → קטגוריה עם **מתג** (כמו "על האש #1"). כשכבויה — מאופרת, לא נספרת ב-`updateProgress`, לא ניתנת לסימון.
-  - `tag:"note"` → תג "אופציה"; `tag:"vegan"` → תג "טבעוני".
-- State נשמר ב-`localStorage` תחת `KEY`. **כל שינוי מבני/תוכני משמעותי → להעלות את גרסת ה-KEY** (`villa_shop_v4` → `v5` ...) כדי לאלץ רענון אצל מי שכבר טען (אחרת הם רואים state ישן שמור).
-- פונקציות עיקריות: `render`, `toggle`, `toggleInclude`, `upd`, `addItem`, `delItem`, `addCategory`, `updateProgress`, `toggleEdit`, `resetChecks`, `restoreDefault`.
+## מודל הנתונים (העץ)
+```
+{ cats: { <cid>: {
+    emoji, name, optional, included, bring, order,
+    items: { <uid>: { n, q, tag, done, by, prevBy, at, order } }
+}}}
+```
+- `optional:true`+`included` → קטגוריה עם **מתג** (על האש #1). כשכבויה: לא נספרת ב-`updateProgress`, לא ניתנת לסימון.
+- `bring:true` → קטגוריית "מי מביא" — סימון = הצהרה "אני מביא", רושם `by` (עם `prevBy` מחוק אם לוקחים אחריות במקום מישהו).
+- `by`/`prevBy`/`at` → תיעוד "מי עדכן ומתי". **רק עריכה אמיתית/הצהרת-מביא רושמת שם — לא סימון checkbox רגיל.**
+- `tag:"note"`→"אופציה"; `tag:"vegan"`→"טבעוני".
 
-## פרמטרים של האירוע (להזכר)
-- 10 מבוגרים + 10 ילדים (≈4 מנות) = **14 מנות**. תינוק חודשיים = 0 (לא אוכל, לא ברשימה).
-- 2 לילות. **מנגל גז** (לא פחם).
-- 2 נשים → סלמון במקום בשר. **לאשר אם טבעוניות** — אם כן, להחזיר תחליפים צמחיים.
-- ארוחות: על האש #1 (אופציונלי/מתג) · על האש #2 · צהריים המבורגרים · בוקר (שקשוקה/ג'חנון/פנקייקים/קורנפלקס/חטיפים) · נקניקיות בלחמניה · סלמון.
+## API של השרת
+- `GET /` → מגיש `public/index.html`.
+- `GET /api/state` → `{rev, tree}`.
+- `GET /api/stream?cid=&name=` → SSE. הודעות: snapshot `{rev,tree,users}` או presence `{users}`. נוכחות נשמרת לפי `cid`.
+- `POST /api/update` → גוף עם `{updates?, setNode?, remove?, setTree?, seedIfEmpty?}` (deep-paths יחסית ל-`cats`).
+- `GET /api/backups` · `GET /api/backup?name=` · `POST /api/snapshot` · `POST /api/restore {name}` (מגבה את הנוכחי לפני שחזור).
+- השרת **גנרי** — לא יודע על המבנה; שומר כל JSON. הזריעה הראשונית מגיעה מהלקוח (`seedIfEmpty`).
 
-## העדפות שהמשתמש כבר ביקש (לא לחזור עליהן)
-- **בלי הערות/תיבות מידע על המסך** — הדף נקי. אם צריך להבהיר משהו — לעשות זאת בצ'אט, לא בדף.
-- כמויות נדיבות לפי 14 מנות; מנגל = הציר המרכזי.
+## הקליינט (`index.html`) — נקודות מפתח
+- `DEFAULT` — תבנית הפריטים. **כאן משנים כמויות/פריטים בברירת מחדל.** (שינוי כאן לא משפיע על הרשימה החיה — היא כבר זרועה; להוסיף לחי דרך `POST /api/update`.)
+- `localStorage`: `villa_shop_v5` (מטמון), `villa_shop_v4` (legacy/seed/recovery), `villa_name`, `villa_cid`.
+- `FAMILIES` — 5 הזוגות לבחירה בכניסה: קים/יהונתן · אלון/דנה · דניאל/עמית · גבריאל/טל · ארז/כרמל. `showNamePicker()`/`setMe()`.
+- `applyTree()` מדלג על render בזמן הקלדה בשדה טקסט (אנטי-קפיצה בנייד); מחיל ממתין אחרי blur.
+- `?recover=1` → `showRecovery()` מציג את ה-localStorage של המכשיר להעתקה (שחזור ידני).
+- פונקציות: `render, toggle, upd(+prevBy), commitGhost, cellKey (Enter כמו אקסל), moveItem, moveCat, toggleMove, buildNav/jumpTo, connectStream/renderPresence, snapshot/restore (server).
 
-## רעיון להמשך (לא מומש)
-סנכרון חי בין כל המשפחות (Firebase/Supabase) במקום `localStorage` פר-מכשיר.
+## פרמטרי האירוע (להזכר)
+14 מנות (10 מבוגרים + 10 ילדים≈4) · 2 לילות · מנגל **גז** · 2 נשים→סלמון · תינוק חודשיים=0.
+
+## העדפות משתמש (לא לחזור עליהן)
+- **דף נקי — בלי תיבות מידע/הערות על המסך.** הבהרות — בצ'אט בלבד.
+- **כפתור "ברירת מחדל" הוסר בכוונה** (מחק הכל לכולם בלחיצה) — אל תחזיר אותו.
+- שמירת נתונים קריטית: **תמיד לגבות לפני שינוי הרסני** (`POST /api/snapshot`), ולא לדרוס מצב חי.
