@@ -340,7 +340,6 @@
 <div class="footbar">
   <button class="fb" onclick="resetChecks()">↺ סימונים</button>
   <button class="fb" id="editbtn" onclick="toggleEdit()">✎ עריכה</button>
-  <button class="fb" onclick="restoreDefault()">🗂️ ברירת מחדל</button>
   <button class="fb primary" onclick="window.print()">🖨️ הדפסה</button>
 </div>
 
@@ -971,10 +970,6 @@ function resetChecks(){
   if(!confirm("לאפס את כל הסימונים לכולם (ולהשאיר את הרשימה)?")) return;
   const u = {}; state.forEach(c=>c.items.forEach(i=>{ u[`cats/${c.cid}/items/${i.uid}/done`]=false; }));
   commit(u);
-}
-function restoreDefault(){
-  if(!confirm("לשחזר את רשימת ברירת המחדל לכולם? כל השינויים יימחקו לכל המשפחות.")) return;
-  setTree(buildObj(DEFAULT));
 }
 
 /* ---------- אתחול ---------- */
