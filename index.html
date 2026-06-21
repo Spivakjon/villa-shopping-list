@@ -432,6 +432,7 @@ let pendingFocus = null;
 let uidc = 1;
 let es = null;                 // EventSource (presence + realtime)
 let navObserver = null;        // timeline active-section observer
+let pendingTree = null;        // עץ ממתין שהתקבל בזמן הקלדה — מוחל אחרי שמסיימים
 const writeTimers = {};
 const CID_KEY = "villa_cid";
 
@@ -520,8 +521,16 @@ function renderPresence(users){
 }
 
 /* ---------- שכבת גישה (ענן/מקומי) ---------- */
+function isTypingField(){
+  const a = document.activeElement;
+  return !!(a && (a.classList.contains("ename")||a.classList.contains("eqty")||a.classList.contains("catname-input")));
+}
 function applyTree(t){
-  tree = (t && t.cats) ? t : {cats:{}};
+  const norm = (t && t.cats) ? t : {cats:{}};
+  // בזמן הקלדה בשדה טקסט — לא לרנדר מחדש (זה מקפיץ את הסמן/המקלדת בנייד). נשמור ונחיל אחרי שמסיימים.
+  if(isTypingField()){ pendingTree = norm; return; }
+  pendingTree = null;
+  tree = norm;
   state = fromTree(tree);
   localSave();
   render();
@@ -550,7 +559,19 @@ function setTree(t){
   if(MODE==="cloud"){ apiUpdate({setTree:t}); }
   else { tree=t; localSave(); applyTree(tree); }
 }
-function scheduleWrite(key, fn){ clearTimeout(writeTimers[key]); writeTimers[key]=setTimeout(fn,500); }
+function scheduleWrite(key, fn){
+  const e = writeTimers[key];
+  if(e && e.timer) clearTimeout(e.timer);
+  writeTimers[key] = { fn, timer: setTimeout(()=>{ writeTimers[key]=null; fn(); }, 600) };
+}
+function flushWrites(){
+  let any = false;
+  for(const k in writeTimers){
+    const e = writeTimers[k];
+    if(e && e.timer){ clearTimeout(e.timer); writeTimers[k]=null; e.fn(); any = true; }
+  }
+  return any;
+}
 
 /* ---------- שם משתמש ---------- */
 function getName(){
@@ -812,8 +833,18 @@ async function init(){
     setConn("🟡 מקומי — אין חיבור לשרת","warn");
     document.getElementById("setupbanner").style.display="block";
   }
+  // כשמסיימים להקליד בשדה — לשלוח מיד את העריכה ולהחיל עדכונים שהצטברו (בלי לקפוץ תוך כדי הקלדה)
+  document.addEventListener("focusout", (ev)=>{
+    const t = ev.target;
+    if(!t || !(t.classList.contains("ename")||t.classList.contains("eqty")||t.classList.contains("catname-input"))) return;
+    setTimeout(()=>{
+      if(isTypingField()) return;                 // עברו לשדה אחר — נחכה
+      const hadWrites = flushWrites();             // לשלוח את מה שנכתב עכשיו
+      if(pendingTree && !hadWrites){ const pt = pendingTree; pendingTree = null; applyTree(pt); }
+    }, 200);
+  });
   // רענון תוויות הזמן ("לפני X דקות") פעם בדקה, בלי להפריע למי שמקליד
-  setInterval(()=>{ const a=document.activeElement; if(a && a.tagName==="INPUT") return; render(); }, 60000);
+  setInterval(()=>{ if(isTypingField()) return; render(); }, 60000);
 }
 
 init();
