@@ -257,8 +257,9 @@
 
 <main style="padding-bottom:0">
   <div class="warn-block" id="setupbanner" style="display:none">
-    🟡 <b>אין חיבור לשרת — מצב מקומי.</b> השינויים נשמרים רק במכשיר הזה.
-    ודא שהשירות רץ ב-Railway ושנכנסת דרך הכתובת שלו (ולא פתיחת הקובץ ישירות).
+    🟡 <b>אין כרגע חיבור לשרת — מוצג עותק מקומי.</b>
+    הנתונים בענן <b>בטוחים ושמורים</b> (כולל גיבויים) — זו רק תקלת רשת רגעית.
+    רענן את הדף בעוד כמה שניות כדי לחזור לרשימה המשותפת.
   </div>
 </main>
 
@@ -902,11 +903,22 @@ function restoreDefault(){
 /* ---------- אתחול ---------- */
 function setConn(text, cls){ const e=document.getElementById("conn"); e.textContent=text; e.className="chip"+(cls?(" "+cls):""); }
 
+async function apiStateRetry(tries){
+  // ניסיונות חוזרים — כדי שאתחול קצר של השרת לא יראה רשימה ריקה/ברירת-מחדל
+  for(let i=0;i<tries;i++){
+    try{ return await apiState(); }
+    catch(e){
+      if(i < tries-1){ setConn("🟠 מתחבר לשרת… ("+(i+1)+")","warn"); await new Promise(r=>setTimeout(r, 1500)); }
+    }
+  }
+  throw new Error("unreachable");
+}
 async function init(){
   renderNameChip();
   ensureName();   // בקש שם מכל אחד בכניסה — כדי שהנוכחות תציג מי זה
+  setConn("🟠 מתחבר לשרת…","warn");
   try{
-    const st = await apiState();
+    const st = await apiStateRetry(5);     // עד 5 ניסיונות (~7.5 שניות) לפני נפילה למצב מקומי
     MODE = "cloud"; rev = st.rev;
     if(isEmpty(st.tree)){ const s = seedObj(); await apiUpdate({seedIfEmpty:s}); applyTree(s); }
     else applyTree(st.tree);
@@ -915,7 +927,7 @@ async function init(){
     document.getElementById("setupbanner").style.display="none";
   }catch(e){
     MODE = "local"; tree = localLoad(); applyTree(tree);
-    setConn("🟡 מקומי — אין חיבור לשרת","warn");
+    setConn("🟡 אין חיבור — מציג עותק מקומי","warn");
     document.getElementById("setupbanner").style.display="block";
   }
   // כשמסיימים להקליד בשדה — לשלוח מיד את העריכה ולהחיל עדכונים שהצטברו (בלי לקפוץ תוך כדי הקלדה)
