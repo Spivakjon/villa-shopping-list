@@ -107,6 +107,15 @@
   .movesel{flex:1;font-family:inherit;color:var(--txt);background:#11141b;border:1px solid var(--line);
            border-radius:8px;padding:7px 9px;font-size:13px;cursor:pointer}
   .movesel:focus{outline:none;border-color:var(--accent2)}
+  .movebtn{width:34px;height:34px;flex:none;border-radius:8px;border:1px solid var(--line);
+           background:#16202c;color:var(--accent2);font-size:16px;cursor:pointer;display:grid;place-items:center}
+  .movebtn:active{background:#1d2b3a}
+  /* שורת ההוספה הממתינה (אקסל) */
+  .ghostrow{opacity:.9}
+  .ghostbox{width:24px;height:24px;flex:none;border:2px dashed #3f4756;border-radius:7px;
+            display:grid;place-items:center;color:var(--muted);font-size:15px;background:transparent}
+  .ghost::placeholder{color:#5b6472}
+  .ghost{border-style:dashed}
   main{max-width:760px;margin:0 auto;padding:16px}
   .cat{
     background:var(--card);border:1px solid var(--line);border-radius:16px;
@@ -451,7 +460,9 @@ let state = [];
 let rev = 0;
 let editing = false;
 let collapsed = new Set();
+let moveOpen = new Set();       // פריטים שפתחו את בורר ההעברה
 let pendingFocus = null;
+let focusGhost = null;         // לאחר רינדור — להחזיר פוקוס לשורת ההוספה של קטגוריה זו
 let uidc = 1;
 let es = null;                 // EventSource (presence + realtime)
 let navObserver = null;        // timeline active-section observer
@@ -668,11 +679,12 @@ function render(){
       const checkSvg = `<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#031018" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
       const sel = moveOpts.replace(`value="${cat.cid}">`, `value="${cat.cid}" selected>`);
       const editRow = `<span class="edit-row editonly">
-          <input class="ename" value="${esc(it.n)}" placeholder="פריט" oninput="upd('${it.uid}','n',this.value)">
-          <input class="eqty" value="${esc(it.q)}" placeholder="${cat.bring?'הערה':'כמות'}" oninput="upd('${it.uid}','q',this.value)">
+          <input class="ename" value="${esc(it.n)}" placeholder="פריט" oninput="upd('${it.uid}','n',this.value)" onkeydown="cellKey(event)">
+          <input class="eqty" value="${esc(it.q)}" placeholder="${cat.bring?'הערה':'כמות'}" oninput="upd('${it.uid}','q',this.value)" onkeydown="cellKey(event)">
+          <button class="movebtn" title="העבר לקטגוריה אחרת" onclick="toggleMove(event,'${it.uid}')">⇄</button>
           <button class="del" title="מחק" onclick="delItem('${it.uid}')">🗑</button>
-          <span class="moverow"><span class="movelbl">↪ העבר ל:</span>
-            <select class="movesel" title="העבר לקטגוריה" onclick="event.stopPropagation()" onchange="moveItem('${it.uid}', this.value)">${sel}</select>
+          <span class="moverow" style="display:${moveOpen.has(it.uid)?'flex':'none'}"><span class="movelbl">↪ העבר ל:</span>
+            <select class="movesel" onclick="event.stopPropagation()" onchange="moveItem('${it.uid}', this.value)">${sel}</select>
           </span>
         </span>`;
       const prevTag = it.prevBy ? `<s>${esc(it.prevBy)}</s> ` : "";
@@ -730,8 +742,13 @@ function render(){
         <span class="chev">▼</span>
       </div>
       <div class="excluded-badge">⤵ הקטגוריה כבויה — לא נספרת בקנייה. הפעל את המתג כדי לכלול.</div>
-      <ul>${lis}</ul>
-      <div class="additem editonly"><button onclick="addItem('${cat.cid}')">➕ הוסף פריט</button></div>`;
+      <ul>${lis}${q?"":`<li class="ghostrow editonly">
+          <span class="box ghostbox">＋</span>
+          <span class="edit-row">
+            <input class="ename ghost" placeholder="הוסף פריט חדש… ↵ Enter" onkeydown="cellKey(event)">
+            <input class="eqty ghost" placeholder="${cat.bring?'הערה':'כמות'}" onkeydown="cellKey(event)">
+          </span>
+        </li>`}</ul>`;
     app.appendChild(sec);
   });
 
@@ -750,6 +767,11 @@ function render(){
   if(pendingFocus){
     const li=document.querySelector(`li[data-uid="${pendingFocus}"]`); const el=li&&li.querySelector(".ename");
     if(el) el.focus(); pendingFocus=null;
+  }
+  if(focusGhost){
+    const cat=document.getElementById("cat_"+focusGhost); const g=cat&&cat.querySelector(".ename.ghost");
+    if(g){ g.focus(); }
+    focusGhost=null;
   }
   window.scrollTo(0, sy);
 }
@@ -868,6 +890,42 @@ function moveItem(u, targetCid){
   if(MODE==="cloud"){ apiUpdate({ setNode:{path:dst, value}, remove:[src] }); }
   else { setP(tree, dst, value); delP(tree, src); localSave(); applyTree(tree); }
 }
+function toggleMove(e, u){
+  if(moveOpen.has(u)) moveOpen.delete(u); else moveOpen.add(u);
+  const li = e.target.closest("li"); const mr = li && li.querySelector(".moverow");
+  if(mr) mr.style.display = moveOpen.has(u) ? "flex" : "none";
+}
+/* הקלדה כמו אקסל: Enter יורד לשורה הבאה; בשורת ההוספה — Enter שומר ופותח שורה חדשה */
+function cellKey(e){
+  if(e.key !== "Enter") return;
+  e.preventDefault();
+  const t = e.target, li = t.closest("li"), cat = t.closest(".cat");
+  const cid = cat ? cat.id.replace("cat_","") : null;
+  const cls = t.classList.contains("ename") ? "ename" : "eqty";
+  if(t.classList.contains("ghost")){                       // שורת ההוספה
+    const n = li.querySelector(".ename.ghost").value.trim();
+    if(!n){ li.querySelector(".ename.ghost").focus(); return; }   // ריק — נשארת שורה ממתינה
+    const qEl = li.querySelector(".eqty.ghost"); const qv = qEl ? qEl.value.trim() : "";
+    commitGhost(cid, n, qv);
+    return;
+  }
+  // שורה רגילה — קפיצה לשורה הבאה (אותה עמודה); אם זו האחרונה → לשורת ההוספה
+  let nx = li.nextElementSibling;
+  while(nx && !nx.querySelector("."+cls)) nx = nx.nextElementSibling;
+  if(nx){ const inp = nx.querySelector("."+cls); inp.focus(); try{ inp.setSelectionRange(inp.value.length, inp.value.length); }catch(_){} }
+}
+function commitGhost(cid, n, qv){
+  const c = state.find(x=>x.cid===cid); if(!c) return;
+  if(document.activeElement) document.activeElement.blur();   // כדי שהרינדור לא ישחזר את הטקסט לשורת ההוספה
+  const order = c.items.reduce((m,i)=>Math.max(m,i.order||0),0)+1;
+  const u = newId("i"); const by = getName();
+  const item = {n, q:qv||"", tag:"", done:false, by, prevBy:"", at:TS(), order};
+  c.items.push({uid:u, ...item});                            // עדכון מיידי מקומי
+  if(MODE==="cloud"){ apiUpdate({setNode:{path:`cats/${cid}/items/${u}`, value:item}}); }
+  else { setP(tree, `cats/${cid}/items/${u}`, item); localSave(); }
+  focusGhost = cid;                                          // פוקוס חוזר לשורת ההוספה החדשה (ריקה)
+  render();
+}
 function addItem(cid){
   const c = state.find(x=>x.cid===cid); if(!c) return;
   const order = c.items.reduce((m,i)=>Math.max(m,i.order||0),0)+1;
@@ -913,7 +971,38 @@ async function apiStateRetry(tries){
   }
   throw new Error("unreachable");
 }
+/* ---------- מסך שחזור: מציג את המטמון המקומי של המכשיר כדי שאפשר לשלוח ולשחזר ---------- */
+function countItems(s){
+  try{ const t = JSON.parse(s);
+    if(Array.isArray(t)) return t.reduce((a,c)=>a+((c.items||[]).length),0);        // פורמט ישן (מערך)
+    return Object.values((t&&t.cats)||{}).reduce((a,c)=>a+Object.keys(c.items||{}).length,0);
+  }catch(e){ return 0; }
+}
+function copyRecovery(btn){
+  const t = document.getElementById("recdata"); t.select();
+  try{ document.execCommand("copy"); }catch(e){}
+  if(navigator.clipboard){ navigator.clipboard.writeText(t.value).catch(()=>{}); }
+  btn.textContent = "✓ הועתק! עכשיו שלח ליהונתן בוואטסאפ";
+}
+function showRecovery(){
+  const v4 = localStorage.getItem(LEGACY_KEY) || "";
+  const v5 = localStorage.getItem(LOCAL_KEY) || "";
+  const payload = JSON.stringify({ device: localStorage.getItem(NAME_KEY)||"", v4, v5 });
+  document.body.innerHTML = `<div style="max-width:680px;margin:0 auto;padding:22px 18px;font-family:Rubik,'Segoe UI',Arial">
+    <h1 style="font-size:21px;margin:0 0 6px">🛟 שחזור רשימת הקניות מהמכשיר הזה</h1>
+    <p style="color:#9aa3b2;font-size:14px;line-height:1.6">
+      נמצאו במכשיר הזה: <b style="color:#37d67a">${countItems(v4)}</b> פריטים בגרסה הישנה ·
+      <b style="color:#2fa9ff">${countItems(v5)}</b> במטמון האחרון.<br>
+      אם יש פה יותר פריטים ממה שבאתר עכשיו — זה האוצר! העתק את הטקסט ושלח ליהונתן.
+    </p>
+    <textarea id="recdata" readonly style="width:100%;height:230px;background:#11141b;color:#eef1f6;border:1px solid #2c313c;border-radius:10px;padding:10px;font-size:11px;direction:ltr"></textarea>
+    <button onclick="copyRecovery(this)" style="margin-top:10px;width:100%;background:#2fa9ff;color:#031018;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:700;cursor:pointer">📋 העתק הכל</button>
+    <p style="color:#6f7a8a;font-size:12px;margin-top:14px">לחזרה לרשימה הרגילה — פתח את הקישור בלי <code>?recover</code>.</p>
+  </div>`;
+  document.getElementById("recdata").value = payload;   // מוגדר אחרי היצירה כדי לא לשבור HTML
+}
 async function init(){
+  if(/recover/i.test(location.search + location.hash)){ showRecovery(); return; }
   renderNameChip();
   ensureName();   // בקש שם מכל אחד בכניסה — כדי שהנוכחות תציג מי זה
   setConn("🟠 מתחבר לשרת…","warn");
