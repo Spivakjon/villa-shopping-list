@@ -107,6 +107,10 @@
   .movesel{flex:1;font-family:inherit;color:var(--txt);background:#11141b;border:1px solid var(--line);
            border-radius:8px;padding:7px 9px;font-size:13px;cursor:pointer}
   .movesel:focus{outline:none;border-color:var(--accent2)}
+  .catmove{flex-direction:column;gap:2px;flex:none;margin-inline-end:2px}
+  .catmove button{width:26px;height:18px;display:grid;place-items:center;padding:0;border:1px solid var(--line);
+           background:#222631;color:var(--muted);border-radius:5px;cursor:pointer;font-size:9px;line-height:1}
+  .catmove button:active{background:#2b3140;color:var(--txt)}
   .movebtn{width:34px;height:34px;flex:none;border-radius:8px;border:1px solid var(--line);
            background:#16202c;color:var(--accent2);font-size:16px;cursor:pointer;display:grid;place-items:center}
   .movebtn:active{background:#1d2b3a}
@@ -735,6 +739,10 @@ function render(){
     sec.id = "cat_"+cat.cid;
     sec.innerHTML = `
       <div class="cathead" onclick="collapse(event,'${cat.cid}')">
+        <span class="catmove editonly" onclick="event.stopPropagation()">
+          <button onclick="moveCat('${cat.cid}',-1)" title="העלה קטגוריה">▲</button>
+          <button onclick="moveCat('${cat.cid}',1)" title="הורד קטגוריה">▼</button>
+        </span>
         <span class="emoji">${cat.emoji}</span>
         ${nameHtml}
         <input class="catname-input editonly" value="${esc(cat.name)}" onclick="event.stopPropagation()" oninput="updCat('${cat.cid}',this.value)">
@@ -925,6 +933,17 @@ function commitGhost(cid, n, qv){
   else { setP(tree, `cats/${cid}/items/${u}`, item); localSave(); }
   focusGhost = cid;                                          // פוקוס חוזר לשורת ההוספה החדשה (ריקה)
   render();
+}
+function moveCat(cid, dir){
+  const cats = state.slice().sort((a,b)=>(a.order||0)-(b.order||0));
+  const i = cats.findIndex(c=>c.cid===cid);
+  if(i<0) return;
+  const j = i + dir;
+  if(j<0 || j>=cats.length) return;
+  cats.splice(j, 0, cats.splice(i,1)[0]);          // הזזת הקטגוריה למקום החדש
+  const updates = {};
+  cats.forEach((c, idx)=>{ if((c.order||0)!==idx){ c.order = idx; updates[`cats/${c.cid}/order`] = idx; } });
+  if(Object.keys(updates).length){ commit(updates); render(); }
 }
 function addItem(cid){
   const c = state.find(x=>x.cid===cid); if(!c) return;
