@@ -101,6 +101,21 @@
   #searchclear{flex:none;background:#222631;border:1px solid var(--line);color:var(--muted);
              width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px}
   .noresults{text-align:center;color:var(--muted);padding:30px 16px;font-size:14px}
+  /* בחירת משתמש (מי אתה) */
+  .namemodal{position:fixed;inset:0;z-index:100;background:rgba(7,9,12,.74);display:flex;
+             align-items:center;justify-content:center;padding:18px}
+  .namecard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 18px;
+            max-width:440px;width:100%;box-shadow:var(--shadow);max-height:90vh;overflow:auto}
+  .namecard h2{font-size:21px;margin:0 0 4px}
+  .namecard p{color:var(--muted);font-size:13px;margin:0 0 16px}
+  .famgrid{display:flex;flex-direction:column;gap:10px}
+  .fam{background:#161922;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .famlbl{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:8px}
+  .fambtns{display:flex;gap:8px}
+  .namebtn{flex:1;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:10px;
+           padding:13px 8px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit}
+  .namebtn:active{background:#2b3140}
+  .namebtn.sel{background:var(--accent2);border-color:var(--accent2);color:#031018}
   /* move item between categories (edit mode) */
   .moverow{flex-basis:100%;display:flex;align-items:center;gap:8px;margin-top:2px}
   .movelbl{font-size:12px;color:var(--muted);white-space:nowrap;flex:none}
@@ -342,6 +357,8 @@
   <button class="fb" id="editbtn" onclick="toggleEdit()">✎ עריכה</button>
   <button class="fb primary" onclick="window.print()">🖨️ הדפסה</button>
 </div>
+
+<div class="namemodal" id="namemodal" style="display:none" onclick="if(event.target===this)this.style.display='none'"></div>
 
 <script>
 /* כתובת השרת. ריק = אותו דומיין (כשנפתח דרך כתובת ה-Railway).
@@ -612,30 +629,44 @@ function flushWrites(){
 }
 
 /* ---------- שם משתמש ---------- */
-function getName(){
-  let n = localStorage.getItem(NAME_KEY);
-  if(!n){ const v=(prompt("מה השם שלך? (יוצמד לעדכונים שלך)")||"").trim(); n=v||"אנונימי"; localStorage.setItem(NAME_KEY,n); renderNameChip(); }
-  return n;
-}
-function changeName(){
+// 5 המשפחות (זוגות) — לבחירה בכניסה
+const FAMILIES = [
+  ["קים", "יהונתן"],
+  ["אלון", "דנה"],
+  ["דניאל", "עמית"],
+  ["גבריאל", "טל"],
+  ["ארז", "כרמל"],
+];
+function getName(){ return localStorage.getItem(NAME_KEY) || "אנונימי"; }
+function ensureName(){ if(!localStorage.getItem(NAME_KEY)) showNamePicker(); }
+function changeName(){ showNamePicker(); }
+function showNamePicker(){
   const cur = localStorage.getItem(NAME_KEY) || "";
-  const n = prompt("השם שלך (כדי שכולם ידעו מי מחובר ומי עדכן):", cur);
-  if(n===null) return;
-  localStorage.setItem(NAME_KEY, n.trim() || "אנונימי");
-  renderNameChip();
-  if(MODE==="cloud") connectStream();   // התחבר מחדש כדי לעדכן את הנוכחות בשם החדש
+  const fams = FAMILIES.map((pair, i)=>`
+    <div class="fam">
+      <div class="famlbl">משפחה ${i+1}</div>
+      <div class="fambtns">
+        ${pair.map(n=>`<button class="namebtn${n===cur?' sel':''}" onclick="setMe('${esc(n)}')">${esc(n)}</button>`).join("")}
+      </div>
+    </div>`).join("");
+  const m = document.getElementById("namemodal");
+  m.innerHTML = `<div class="namecard" onclick="event.stopPropagation()">
+      <h2>👋 מי אתה?</h2>
+      <p>בחר את עצמך — כדי שכולם יראו מי מחובר ומי עדכן</p>
+      <div class="famgrid">${fams}</div>
+    </div>`;
+  m.style.display = "flex";
 }
-function ensureName(){
-  if(!localStorage.getItem(NAME_KEY)){
-    const v = (prompt("ברוך הבא לרשימת הקניות 🛒\nמה השם שלך? (כדי שכולם ידעו מי מחובר ומי עדכן)")||"").trim();
-    localStorage.setItem(NAME_KEY, v || "אנונימי");
-    renderNameChip();
-  }
+function setMe(name){
+  localStorage.setItem(NAME_KEY, name);
+  renderNameChip();
+  const m = document.getElementById("namemodal"); if(m) m.style.display = "none";
+  if(MODE==="cloud") connectStream();   // עדכון נוכחות בשם החדש
 }
 function renderNameChip(){
   const e = document.getElementById("namechip");
   const n = localStorage.getItem(NAME_KEY);
-  e.textContent = n ? ("👤 "+n) : "👤 הקש להגדרת שם";
+  e.textContent = n ? ("👤 "+n) : "👤 בחר מי אתה";
 }
 
 /* ---------- עזרי תצוגה ---------- */
