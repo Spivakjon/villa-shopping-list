@@ -25,6 +25,12 @@
   h1{font-size:20px;margin:0 0 4px}
   .sub{color:var(--muted);font-size:13px;margin-bottom:10px}
   .sub b{color:var(--txt)}
+  .toprow{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .chip{font-size:12px;color:var(--muted);background:#161922;border:1px solid var(--line);
+        padding:4px 10px;border-radius:99px;cursor:default}
+  .chip.ok{color:var(--accent);border-color:#244a32}
+  .chip.warn{color:var(--warn);border-color:#5a3a1a}
+  #namechip{cursor:pointer}
   .progwrap{display:flex;align-items:center;gap:10px}
   .progbar{flex:1;height:10px;background:#252a34;border-radius:99px;overflow:hidden}
   .progfill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .25s}
@@ -76,6 +82,9 @@
   .iname{font-size:15px}
   .iqty{font-size:12px;color:var(--muted)}
   li.done .iname,li.done .iqty{color:var(--done);text-decoration:line-through}
+  .meta{font-size:11px;color:#6f7a8a;margin-top:2px}
+  .meta b{color:#9aa3b2;font-weight:600}
+  li.done .meta{color:#586273}
   .tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap}
   .tag.vegan{background:rgba(126,231,135,.14);color:var(--vegan)}
   .tag.note{background:rgba(255,180,84,.14);color:var(--warn)}
@@ -123,11 +132,6 @@
   button.fb:active{background:#2b3140}
   button.fb.primary{background:var(--accent2);border-color:var(--accent2);color:#031018}
   button.fb.on{background:var(--warn);border-color:var(--warn);color:#2a1c00}
-  .note-block{
-    background:rgba(47,169,255,.07);border:1px solid rgba(47,169,255,.25);
-    border-radius:12px;padding:12px 14px;font-size:13px;color:#cfe4f7;margin-bottom:16px;
-  }
-  .note-block b{color:#fff}
   .warn-block{
     background:rgba(255,180,84,.08);border:1px solid rgba(255,180,84,.3);
     border-radius:12px;padding:11px 14px;font-size:12.5px;color:#ffe2b8;margin-bottom:16px;
@@ -148,11 +152,11 @@
   .meal .when{font-size:11px;color:var(--accent2);font-weight:700}
   .meal.grill .when,.meal.opt .when{color:var(--warn)}
   @media print{
-    header{position:static}.footbar,#addcat,.additem,.editonly,.del{display:none!important}
+    header{position:static}.footbar,#addcat,.additem,.editonly,.del,.toprow{display:none!important}
     .cat,.cathead,.meals{background:#fff!important;box-shadow:none}
     body{background:#fff;color:#000;padding:0}.cat.collapsed ul{display:block}
-    .box{border-color:#000}.note-block,.warn-block{display:none}
-    .cat.excluded ul{opacity:1}
+    .box{border-color:#000}.warn-block{display:none}
+    .cat.excluded ul{opacity:1}.meta{color:#666}
   }
 </style>
 </head>
@@ -160,12 +164,23 @@
 <header>
   <h1>🏡 רשימת קניות – וילה סופ"ש</h1>
   <div class="sub">5 משפחות · <b>10 מבוגרים</b> + <b>10 ילדים</b> (≈<b>4 מנות</b>) = <b>14 מנות</b> · 2 לילות</div>
+  <div class="toprow">
+    <span class="chip" id="conn">…</span>
+    <span class="chip" id="namechip" onclick="changeName()">👤</span>
+  </div>
   <div class="progwrap">
     <div class="progbar"><div class="progfill" id="fill"></div></div>
     <div class="progtxt" id="ptxt">0 / 0</div>
   </div>
-  <div class="editbadge">✎ מצב עריכה פעיל — שנה כמויות/שמות, הוסף או מחק. הכל נשמר אוטומטית.</div>
+  <div class="editbadge">✎ מצב עריכה פעיל — שנה כמויות/שמות, הוסף או מחק. הכל מסונכרן לכולם אוטומטית.</div>
 </header>
+
+<main style="padding-bottom:0">
+  <div class="warn-block" id="setupbanner" style="display:none">
+    🟡 <b>אין חיבור לשרת — מצב מקומי.</b> השינויים נשמרים רק במכשיר הזה.
+    ודא שהשירות רץ ב-Railway ושנכנסת דרך הכתובת שלו (ולא פתיחת הקובץ ישירות).
+  </div>
+</main>
 
 <main id="app"></main>
 <button id="addcat" onclick="addCategory()">➕ הוסף קטגוריה</button>
@@ -222,23 +237,23 @@
 </div>
 
 <script>
+/* כתובת השרת. ריק = אותו דומיין (כשנפתח דרך כתובת ה-Railway).
+   אם תרצה לפתוח את הקובץ מבחוץ — שים כאן את כתובת ה-Railway המלאה. */
+const API_BASE = "https://villa-shop-production.up.railway.app";
+
 const DEFAULT = [
-  {id:"super", emoji:"🛒", name:"סופר", items:[
+  {emoji:"🛒", name:"סופר", items:[
     {n:"גז לגריל (בלון מלא / לוודא מילוי)", q:"1"},
     {n:"נייר כסף + תבניות אלומיניום", q:"2 גליל + 4 תבניות"},
-    // --- בוקר: שקשוקה ---
     {n:"ביצים", q:"36 (3 תבניות)"},
     {n:"רסק/פסטת עגבניות לשקשוקה", q:"3 קופסאות"},
     {n:"רוטב שקשוקה מוכן (אופציה)", q:"1", tag:"note"},
-    // --- בוקר: ג'חנון ---
     {n:"ג'חנון קפוא", q:"3 חבילות"},
     {n:"סחוג (לג'חנון)", q:"1"},
     {n:"חילבה (אופציה)", q:"1", tag:"note"},
-    // --- בוקר: פנקייקים ---
     {n:"תערובת פנקייק / קמח", q:"2"},
     {n:"סירופ מייפל / סילאן", q:"1"},
     {n:"אבקת אפייה (אם קמח רגיל)", q:"1", tag:"note"},
-    // --- בוקר: קורנפלקס + חלבי ---
     {n:"קורנפלקס / דגני בוקר", q:"2–3"},
     {n:"חלב", q:"4 ליטר"},
     {n:"חמאה", q:"1"},
@@ -247,13 +262,10 @@ const DEFAULT = [
     {n:"שמנת חמוצה / לבנה", q:"2"},
     {n:"דבש / ריבה / ממרח שוקולד", q:"לפי טעם"},
     {n:"קפה + תה + סוכר", q:"לפי צורך"},
-    // --- צהריים: המבורגרים ---
     {n:"לחמניות המבורגר", q:"3 חבילות (~24)"},
     {n:"גבינה צהובה פרוסה (לבורגר)", q:"2 חבילות"},
     {n:"חמוצים / מלפפון חמוץ", q:"1 צנצנת"},
-    // --- נקניקיות בלחמניה ---
     {n:"לחמניות הוט-דוג", q:"2 חבילות"},
-    // --- מנגל: לחם ומטבלים ---
     {n:"פיתות", q:"2 חבילות"},
     {n:"חומוס מוכן", q:"3 קופסאות"},
     {n:"טחינה גולמית", q:"1 גדול"},
@@ -262,19 +274,16 @@ const DEFAULT = [
     {n:"רוטב ברביקיו / צ'ילי מתוק", q:"1–2"},
     {n:"שמן זית + שמן קנולה", q:"1 מכל"},
     {n:"מלח גס + פלפל + פפריקה + כמון", q:"לפי צורך"},
-    // --- משקאות ---
     {n:"מים מינרליים (שישיות)", q:"3 שישיות"},
     {n:"קולה / סודה / מיצים", q:"6 בקבוקים"},
     {n:"בירה", q:"לפי טעם"},
     {n:"יין / אלכוהול", q:"לפי טעם"},
     {n:"קרח (שקיות)", q:"3–4 שקיות"},
-    // --- נשנושים וקינוח ---
     {n:"חטיפים (במבה/ביסלי/צ'יפס/בייגלה)", q:"מבחר"},
     {n:"פיצוחים", q:"לפי טעם"},
     {n:"עוגיות / וופלים / שוקולד", q:"מבחר"},
     {n:"גלידה / ארטיק", q:"2 קופסאות"},
     {n:"מרשמלו לאש (לילדים)", q:"1"},
-    // --- חד פעמי ---
     {n:"צלחות חד-פעמי (גדולות+קטנות)", q:"חבילה גדולה"},
     {n:"כוסות חד-פעמי", q:"חבילה"},
     {n:"סכו\"ם חד-פעמי", q:"חבילה"},
@@ -283,20 +292,17 @@ const DEFAULT = [
     {n:"נייר טואלט + מגבת נייר", q:"חבילה"},
   ]},
 
-  {id:"kazav", emoji:"🥩", name:"קצב — על האש #2 + צהריים", items:[
-    // על האש #2 (סגור)
+  {emoji:"🥩", name:"קצב — על האש #2 + צהריים", items:[
     {n:"פרגיות עוף", q:"2 ק\"ג"},
     {n:"כנפיים", q:"1.5 ק\"ג"},
     {n:"קבב / כפתה", q:"1.5 ק\"ג"},
     {n:"מרגז / נקניקיות חריפות", q:"1 ק\"ג"},
     {n:"אנטריקוט / סינטה לסטייק", q:"1.5 ק\"ג"},
-    // צהריים: המבורגרים
     {n:"המבורגרים (לצהריים)", q:"24 יח'"},
-    // נקניקיות בלחמניה
     {n:"נקניקיות בקר (הוט-דוג)", q:"2 חבילות (~24)"},
   ]},
 
-  {id:"grill1", emoji:"🔥", name:"על האש #1", optional:true, included:false, items:[
+  {emoji:"🔥", name:"על האש #1", optional:true, included:false, items:[
     {n:"פרגיות עוף", q:"2 ק\"ג"},
     {n:"כנפיים", q:"1 ק\"ג"},
     {n:"קבב / כפתה", q:"1 ק\"ג"},
@@ -304,7 +310,7 @@ const DEFAULT = [
     {n:"אנטריקוט / סטייק", q:"1.5 ק\"ג"},
   ]},
 
-  {id:"yarkan", emoji:"🥬", name:"ירקן", items:[
+  {emoji:"🥬", name:"ירקן", items:[
     {n:"עגבניות (סלט+שקשוקה+ג'חנון)", q:"2.5 ק\"ג"},
     {n:"פלפלים אדום/צהוב (סלט+שקשוקה)", q:"1.5 ק\"ג"},
     {n:"בצל", q:"1.5 ק\"ג"},
@@ -324,51 +330,177 @@ const DEFAULT = [
     {n:"מלון / ענבים / פירות לקינוח", q:"מבחר"},
   ]},
 
-  {id:"dagim", emoji:"🐟", name:"דגים — סלמון ל-2 הנשים", items:[
+  {emoji:"🐟", name:"דגים — סלמון ל-2 הנשים", items:[
     {n:"פילה סלמון (ל-2 הנשים)", q:"0.6 ק\"ג"},
     {n:"לימון + שמיר לסלמון", q:"לפי צורך"},
   ]},
 ];
 
-const KEY = "villa_shop_v4";
-let uidc = 1;
-const uid = ()=> "i"+(uidc++)+"_"+Math.floor(Math.random()*1e6);
+/* ---------- מצב ---------- */
+const LOCAL_KEY = "villa_shop_v5";   // מטמון מקומי (offline)
+const LEGACY_KEY = "villa_shop_v4";  // הרשימה ה-LOCAL הישנה — מועברת לשרת בזריעה הראשונה
+const NAME_KEY  = "villa_name";
+
+let MODE = "local";            // "cloud" | "local"
+let tree = {cats:{}};
+let state = [];
+let rev = 0;
 let editing = false;
-let state;
+let collapsed = new Set();
+let pendingFocus = null;
+let uidc = 1;
+const writeTimers = {};
 
-function seed(){
-  return DEFAULT.map(c=>({
-    cid:"c"+(uidc++), emoji:c.emoji, name:c.name,
-    optional:!!c.optional, included:c.optional?!!c.included:true,
-    items:c.items.map(it=>({uid:uid(), n:it.n, q:it.q, tag:it.tag||"", done:false}))
-  }));
+const newId = p => p + (uidc++) + "_" + Math.floor(Math.random()*1e6);
+function TS(){ return Date.now(); }
+
+/* ---------- המרות עץ <-> מערך ---------- */
+function buildObj(src){
+  const cats = {};
+  src.forEach((c, ci)=>{
+    const cid = c.cid || newId("c");
+    const items = {};
+    (c.items||[]).forEach((it, ii)=>{
+      const u = it.uid || newId("i");
+      items[u] = { n:it.n, q:it.q, tag:it.tag||"", done:!!it.done, by:it.by||"", at:it.at||0, order:ii };
+    });
+    cats[cid] = {
+      emoji:c.emoji, name:c.name, optional:!!c.optional,
+      included: c.optional ? (c.included===undefined ? false : !!c.included) : true,
+      order:ci, items
+    };
+  });
+  return {cats};
 }
-function load(){
-  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s&&s.length) return s; }catch(e){}
-  return seed();
+function fromTree(t){
+  return Object.entries((t&&t.cats)||{}).map(([cid,c])=>({
+    cid, emoji:c.emoji, name:c.name,
+    optional:!!c.optional, included: c.optional ? !!c.included : true, order:c.order||0,
+    items: Object.entries(c.items||{}).map(([uid,it])=>({
+      uid, n:it.n, q:it.q, tag:it.tag||"", done:!!it.done, by:it.by||"", at:it.at||0, order:it.order||0
+    })).sort((a,b)=>a.order-b.order)
+  })).sort((a,b)=>a.order-b.order);
 }
-function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+function seedObj(){
+  let src = DEFAULT;
+  try{ const l = JSON.parse(localStorage.getItem(LEGACY_KEY)); if(Array.isArray(l)&&l.length) src = l; }catch(e){}
+  return buildObj(src);
+}
+function isEmpty(t){ return !t || !t.cats || Object.keys(t.cats).length===0; }
+
+/* ---------- תקשורת עם השרת ---------- */
+function apiState(){
+  return fetch(API_BASE+"/api/state", {cache:"no-store"}).then(r=>{ if(!r.ok) throw 0; return r.json(); });
+}
+function apiUpdate(body){
+  return fetch(API_BASE+"/api/update", {
+    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
+  }).catch(()=>{});
+}
+function connectStream(){
+  try{
+    const es = new EventSource(API_BASE+"/api/stream");
+    es.onmessage = ev=>{
+      try{ const d = JSON.parse(ev.data); rev = d.rev; MODE = "cloud"; applyTree(d.tree);
+           setConn("🟢 ONLINE — מסונכרן לכולם","ok"); document.getElementById("setupbanner").style.display="none"; }catch(e){}
+    };
+    es.onerror = ()=> setConn("🟠 מתחבר מחדש…","warn");
+  }catch(e){}
+}
+
+/* ---------- שכבת גישה (ענן/מקומי) ---------- */
+function applyTree(t){
+  tree = (t && t.cats) ? t : {cats:{}};
+  state = fromTree(tree);
+  localSave();
+  render();
+}
+function localSave(){ try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(tree)); }catch(e){} }
+function localLoad(){
+  try{ const t = JSON.parse(localStorage.getItem(LOCAL_KEY)); if(t&&t.cats) return t; }catch(e){}
+  return seedObj();
+}
+function setP(root,p,val){ const a=p.split("/"); let o=root; for(let i=0;i<a.length-1;i++){ if(typeof o[a[i]]!=="object"||o[a[i]]===null)o[a[i]]={}; o=o[a[i]]; } o[a[a.length-1]]=val; }
+function delP(root,p){ const a=p.split("/"); let o=root; for(let i=0;i<a.length-1;i++){ if(!o[a[i]])return; o=o[a[i]]; } delete o[a[a.length-1]]; }
+
+function commit(updates){
+  if(MODE==="cloud"){ apiUpdate({updates}); }
+  else { for(const p in updates) setP(tree,p,updates[p]); localSave(); applyTree(tree); }
+}
+function setNode(path,value){
+  if(MODE==="cloud"){ apiUpdate({setNode:{path,value}}); }
+  else { setP(tree,path,value); localSave(); applyTree(tree); }
+}
+function removeNode(path){
+  if(MODE==="cloud"){ apiUpdate({remove:[path]}); }
+  else { delP(tree,path); localSave(); applyTree(tree); }
+}
+function setTree(t){
+  if(MODE==="cloud"){ apiUpdate({setTree:t}); }
+  else { tree=t; localSave(); applyTree(tree); }
+}
+function scheduleWrite(key, fn){ clearTimeout(writeTimers[key]); writeTimers[key]=setTimeout(fn,500); }
+
+/* ---------- שם משתמש ---------- */
+function getName(){
+  let n = localStorage.getItem(NAME_KEY);
+  if(!n){ const v=(prompt("מה השם שלך? (יוצמד לעדכונים שלך)")||"").trim(); n=v||"אנונימי"; localStorage.setItem(NAME_KEY,n); renderNameChip(); }
+  return n;
+}
+function changeName(){
+  const cur = localStorage.getItem(NAME_KEY) || "";
+  const n = prompt("השם שלך (יוצמד לעדכונים):", cur);
+  if(n===null) return;
+  localStorage.setItem(NAME_KEY, n.trim() || "אנונימי"); renderNameChip();
+}
+function renderNameChip(){
+  const e = document.getElementById("namechip");
+  const n = localStorage.getItem(NAME_KEY);
+  e.textContent = n ? ("👤 "+n) : "👤 הקש להגדרת שם";
+}
+
+/* ---------- עזרי תצוגה ---------- */
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
 function active(c){ return !c.optional || c.included; }
+function find(u){ for(const c of state){ const it=c.items.find(x=>x.uid===u); if(it) return {c,it}; } return null; }
+function fmtTime(t){
+  if(!t) return "";
+  const d = Date.now() - t;
+  if(d < 60000)    return "עכשיו";
+  if(d < 3600000)  return "לפני "+Math.floor(d/60000)+" ד׳";
+  if(d < 86400000) return "לפני "+Math.floor(d/3600000)+" ש׳";
+  const dt = new Date(t); const p = n => String(n).padStart(2,"0");
+  return p(dt.getDate())+"/"+p(dt.getMonth()+1)+" "+p(dt.getHours())+":"+p(dt.getMinutes());
+}
 
-state = load();
-
+/* ---------- רינדור ---------- */
 function render(){
   const app = document.getElementById("app");
-  app.innerHTML = "";
+  const sy = window.scrollY;
 
+  const a = document.activeElement; let fi = null;
+  if(a && (a.classList.contains("ename")||a.classList.contains("eqty")||a.classList.contains("catname-input"))){
+    const li=a.closest("li"), cat=a.closest(".cat");
+    fi = { cls: a.classList.contains("ename")?"ename":a.classList.contains("eqty")?"eqty":"catname-input",
+           uid: li?li.dataset.uid:null, cid: cat?cat.id.replace("cat_",""):null,
+           val: a.value, s:a.selectionStart, e:a.selectionEnd };
+  }
+
+  app.innerHTML = "";
   state.forEach(cat=>{
     const on = active(cat);
-    const total = cat.items.length;
-    const done = cat.items.filter(i=>i.done).length;
+    const total = cat.items.length, done = cat.items.filter(i=>i.done).length;
     const lis = cat.items.map(it=>{
       const tag = it.tag==="vegan" ? `<span class="tag vegan viewonly">טבעוני</span>`
-                : it.tag==="note" ? `<span class="tag note viewonly">אופציה</span>` : "";
+                : it.tag==="note"  ? `<span class="tag note viewonly">אופציה</span>` : "";
+      const meta = it.by ? `<div class="meta">✎ <b>${esc(it.by)}</b> · ${fmtTime(it.at)}</div>` : "";
       return `<li class="${it.done?'done':''}" data-uid="${it.uid}">
         <span class="box viewonly" onclick="toggle('${it.uid}')">
           <svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#031018" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         <span class="itxt viewonly" onclick="toggle('${it.uid}')">
           <span class="iname">${esc(it.n)}</span> <span class="iqty">· ${esc(it.q)}</span>
+          ${meta}
         </span>
         ${tag}
         <span class="edit-row editonly">
@@ -387,14 +519,14 @@ function render(){
         <span class="slider"></span>
       </label>`;
     }else{
-      countOrSwitch = `<span class="catcount viewonly" id="cc_${cat.cid}">${done}/${total}</span>`;
+      countOrSwitch = `<span class="catcount viewonly">${done}/${total}</span>`;
     }
     const nameHtml = cat.optional
       ? `<h2 class="viewonly">${esc(cat.name)} <span class="opt-sub">אופציונלי — אולי אוכל מבחוץ</span></h2>`
       : `<h2 class="viewonly">${esc(cat.name)}</h2>`;
 
     const sec = document.createElement("section");
-    sec.className = "cat" + (cat.optional?" optional":"") + (on?"":" excluded");
+    sec.className = "cat" + (cat.optional?" optional":"") + (on?"":" excluded") + (collapsed.has(cat.cid)?" collapsed":"");
     sec.id = "cat_"+cat.cid;
     sec.innerHTML = `
       <div class="cathead" onclick="collapse(event,'${cat.cid}')">
@@ -406,72 +538,114 @@ function render(){
       </div>
       <div class="excluded-badge">⤵ הקטגוריה כבויה — לא נספרת בקנייה. הפעל את המתג כדי לכלול.</div>
       <ul>${lis}</ul>
-      <div class="additem editonly">
-        <button onclick="addItem('${cat.cid}')">➕ הוסף פריט</button>
-      </div>`;
+      <div class="additem editonly"><button onclick="addItem('${cat.cid}')">➕ הוסף פריט</button></div>`;
     app.appendChild(sec);
   });
+
   updateProgress();
+
+  if(fi){
+    let el = null;
+    if(fi.cls==="catname-input"){ const c=document.getElementById("cat_"+fi.cid); el=c&&c.querySelector(".catname-input"); }
+    else { const li=document.querySelector(`li[data-uid="${fi.uid}"]`); el=li&&li.querySelector("."+fi.cls); }
+    if(el){ el.value=fi.val; el.focus(); try{ el.setSelectionRange(fi.s,fi.e); }catch(e){} }
+  }
+  if(pendingFocus){
+    const li=document.querySelector(`li[data-uid="${pendingFocus}"]`); const el=li&&li.querySelector(".ename");
+    if(el) el.focus(); pendingFocus=null;
+  }
+  window.scrollTo(0, sy);
+}
+function updateProgress(){
+  let total=0, done=0;
+  state.forEach(c=>{ if(!active(c)) return; c.items.forEach(i=>{ total++; if(i.done) done++; }); });
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById("fill").style.width = pct+"%";
+  document.getElementById("ptxt").textContent = done+" / "+total;
 }
 
-function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
-function find(u){ for(const c of state){const it=c.items.find(x=>x.uid===u); if(it) return {c,it};} return null; }
-
+/* ---------- פעולות ---------- */
 function toggle(u){
   if(editing) return;
   const r = find(u); if(!r || !active(r.c)) return;
-  r.it.done = !r.it.done; save();
-  const li = document.querySelector(`li[data-uid="${u}"]`);
-  li.classList.toggle("done", r.it.done);
-  const done = r.c.items.filter(i=>i.done).length;
-  const cc = document.getElementById("cc_"+r.c.cid);
-  if(cc) cc.textContent = done+"/"+r.c.items.length;
-  updateProgress();
+  const nd = !r.it.done;
+  const li = document.querySelector(`li[data-uid="${u}"]`); if(li) li.classList.toggle("done", nd);
+  const cid = r.c.cid, by = getName();
+  commit({ [`cats/${cid}/items/${u}/done`]:nd, [`cats/${cid}/items/${u}/by`]:by, [`cats/${cid}/items/${u}/at`]:TS() });
 }
 function toggleInclude(cid){
   const c = state.find(x=>x.cid===cid); if(!c) return;
-  c.included = !c.included; save(); render();
+  const by = getName();
+  commit({ [`cats/${cid}/included`]:!c.included, [`cats/${cid}/by`]:by, [`cats/${cid}/at`]:TS() });
 }
-function upd(u,field,val){ const r=find(u); if(r){ r.it[field]=val; save(); } }
-function updCat(cid,val){ const c=state.find(x=>x.cid===cid); if(c){ c.name=val; save(); } }
-function delItem(u){ const r=find(u); if(!r) return; r.c.items = r.c.items.filter(x=>x.uid!==u); save(); render(); }
+function upd(u, field, val){
+  const r = find(u); if(!r) return; r.it[field]=val;
+  const cid = r.c.cid, by = getName();
+  scheduleWrite(`${cid}|${u}|${field}`, ()=> commit({
+    [`cats/${cid}/items/${u}/${field}`]:val, [`cats/${cid}/items/${u}/by`]:by, [`cats/${cid}/items/${u}/at`]:TS()
+  }));
+}
+function updCat(cid, val){
+  const c = state.find(x=>x.cid===cid); if(c) c.name=val;
+  const by = getName();
+  scheduleWrite(`cat|${cid}`, ()=> commit({ [`cats/${cid}/name`]:val, [`cats/${cid}/by`]:by, [`cats/${cid}/at`]:TS() }));
+}
+function delItem(u){ const r = find(u); if(!r) return; removeNode(`cats/${r.c.cid}/items/${u}`); }
 function addItem(cid){
-  const c=state.find(x=>x.cid===cid); if(!c) return;
-  c.items.push({uid:uid(), n:"", q:"", tag:"", done:false}); save(); render();
-  const lis=document.querySelectorAll(`#cat_${cid} .ename`);
-  if(lis.length) lis[lis.length-1].focus();
+  const c = state.find(x=>x.cid===cid); if(!c) return;
+  const order = c.items.reduce((m,i)=>Math.max(m,i.order||0),0)+1;
+  const u = newId("i"); pendingFocus = u;
+  setNode(`cats/${cid}/items/${u}`, {n:"", q:"", tag:"", done:false, by:getName(), at:TS(), order});
 }
 function addCategory(){
-  state.push({cid:"c"+(uidc++), emoji:"📦", name:"קטגוריה חדשה", optional:false, included:true, items:[]}); save(); render();
+  const cid = newId("c"); const order = state.length;
+  setNode(`cats/${cid}`, {emoji:"📦", name:"קטגוריה חדשה", optional:false, included:true, order, items:{}});
 }
-function collapse(e,cid){
+function collapse(e, cid){
   if(editing) return;
   if(e.target.closest("li")||e.target.closest("input")||e.target.closest(".switch")) return;
-  document.getElementById("cat_"+cid).classList.toggle("collapsed");
-}
-function updateProgress(){
-  let total=0,done=0;
-  state.forEach(c=>{ if(!active(c)) return; c.items.forEach(i=>{total++; if(i.done) done++;}); });
-  const pct=total?Math.round(done/total*100):0;
-  document.getElementById("fill").style.width=pct+"%";
-  document.getElementById("ptxt").textContent=done+" / "+total;
+  if(collapsed.has(cid)) collapsed.delete(cid); else collapsed.add(cid);
+  const el = document.getElementById("cat_"+cid); if(el) el.classList.toggle("collapsed");
 }
 function toggleEdit(){
-  editing=!editing;
-  document.body.classList.toggle("editing",editing);
-  document.getElementById("editbtn").classList.toggle("on",editing);
+  editing = !editing;
+  document.body.classList.toggle("editing", editing);
+  document.getElementById("editbtn").classList.toggle("on", editing);
   document.getElementById("editbtn").textContent = editing ? "✓ סיום עריכה" : "✎ עריכה";
 }
 function resetChecks(){
-  if(!confirm("לאפס את כל הסימונים (ולהשאיר את הרשימה)?")) return;
-  state.forEach(c=>c.items.forEach(i=>i.done=false)); save(); render();
+  if(!confirm("לאפס את כל הסימונים לכולם (ולהשאיר את הרשימה)?")) return;
+  const u = {}; state.forEach(c=>c.items.forEach(i=>{ u[`cats/${c.cid}/items/${i.uid}/done`]=false; }));
+  commit(u);
 }
 function restoreDefault(){
-  if(!confirm("לשחזר את רשימת ברירת המחדל? כל השינויים שלך יימחקו.")) return;
-  state=seed(); save(); render();
+  if(!confirm("לשחזר את רשימת ברירת המחדל לכולם? כל השינויים יימחקו לכל המשפחות.")) return;
+  setTree(buildObj(DEFAULT));
 }
 
-render();
+/* ---------- אתחול ---------- */
+function setConn(text, cls){ const e=document.getElementById("conn"); e.textContent=text; e.className="chip"+(cls?(" "+cls):""); }
+
+async function init(){
+  renderNameChip();
+  try{
+    const st = await apiState();
+    MODE = "cloud"; rev = st.rev;
+    if(isEmpty(st.tree)){ const s = seedObj(); await apiUpdate({seedIfEmpty:s}); applyTree(s); }
+    else applyTree(st.tree);
+    connectStream();
+    setConn("🟢 ONLINE — מסונכרן לכולם","ok");
+    document.getElementById("setupbanner").style.display="none";
+  }catch(e){
+    MODE = "local"; tree = localLoad(); applyTree(tree);
+    setConn("🟡 מקומי — אין חיבור לשרת","warn");
+    document.getElementById("setupbanner").style.display="block";
+  }
+  // רענון תוויות הזמן ("לפני X דקות") פעם בדקה, בלי להפריע למי שמקליד
+  setInterval(()=>{ const a=document.activeElement; if(a && a.tagName==="INPUT") return; render(); }, 60000);
+}
+
+init();
 </script>
 </body>
 </html>
