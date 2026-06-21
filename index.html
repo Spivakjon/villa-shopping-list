@@ -138,6 +138,7 @@
   li.done .iname,li.done .iqty{color:var(--done);text-decoration:line-through}
   .meta{font-size:11px;color:#6f7a8a;margin-top:2px}
   .meta b{color:#9aa3b2;font-weight:600}
+  .meta s,.claim s{color:#6f7a8a;opacity:.75;text-decoration:line-through;font-weight:400}
   li.done .meta{color:#586273}
   .tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap}
   .tag.vegan{background:rgba(126,231,135,.14);color:var(--vegan)}
@@ -452,7 +453,7 @@ function buildObj(src){
     const items = {};
     (c.items||[]).forEach((it, ii)=>{
       const u = it.uid || newId("i");
-      items[u] = { n:it.n, q:it.q, tag:it.tag||"", done:!!it.done, by:it.by||"", at:it.at||0, order:ii };
+      items[u] = { n:it.n, q:it.q, tag:it.tag||"", done:!!it.done, by:it.by||"", prevBy:it.prevBy||"", at:it.at||0, order:ii };
     });
     cats[cid] = {
       emoji:c.emoji, name:c.name, optional:!!c.optional,
@@ -468,7 +469,7 @@ function fromTree(t){
     cid, emoji:c.emoji, name:c.name,
     optional:!!c.optional, included: c.optional ? !!c.included : true, bring: !!c.bring, order:c.order||0,
     items: Object.entries(c.items||{}).map(([uid,it])=>({
-      uid, n:it.n, q:it.q, tag:it.tag||"", done:!!it.done, by:it.by||"", at:it.at||0, order:it.order||0
+      uid, n:it.n, q:it.q, tag:it.tag||"", done:!!it.done, by:it.by||"", prevBy:it.prevBy||"", at:it.at||0, order:it.order||0
     })).sort((a,b)=>a.order-b.order)
   })).sort((a,b)=>a.order-b.order);
 }
@@ -640,9 +641,10 @@ function render(){
           <input class="eqty" value="${esc(it.q)}" placeholder="${cat.bring?'הערה':'כמות'}" oninput="upd('${it.uid}','q',this.value)">
           <button class="del" title="מחק" onclick="delItem('${it.uid}')">🗑</button>
         </span>`;
+      const prevTag = it.prevBy ? `<s>${esc(it.prevBy)}</s> ` : "";
       if(cat.bring){
         const claim = (it.done && it.by)
-          ? `<span class="claim">🙋 <b>${esc(it.by)}</b> מביא/ה</span>`
+          ? `<span class="claim">🙋 ${prevTag}<b>${esc(it.by)}</b> מביא/ה</span>`
           : `<span class="claimhint">לחצו כדי לסמן «אני מביא»</span>`;
         return `<li class="${it.done?'done claimed':''}" data-uid="${it.uid}">
           <span class="box viewonly" onclick="toggle('${it.uid}')">${checkSvg}</span>
@@ -654,7 +656,7 @@ function render(){
           ${editRow}
         </li>`;
       }
-      const meta = it.by ? `<div class="meta">✎ <b>${esc(it.by)}</b> · ${fmtTime(it.at)}</div>` : "";
+      const meta = it.by ? `<div class="meta">✎ ${prevTag}<b>${esc(it.by)}</b> · ${fmtTime(it.at)}</div>` : "";
       return `<li class="${it.done?'done':''}" data-uid="${it.uid}">
         <span class="box viewonly" onclick="toggle('${it.uid}')">${checkSvg}</span>
         <span class="itxt viewonly" onclick="toggle('${it.uid}')">
@@ -759,10 +761,29 @@ function observeSections(){
 function toggle(u){
   if(editing) return;
   const r = find(u); if(!r || !active(r.c)) return;
+  const cid = r.c.cid, P = `cats/${cid}/items/${u}/`;
+
+  if(r.c.bring){
+    // קטגוריית "מי מביא" — הסימון הוא ההצהרה, ולכן כן רושמים שם (עם תיעוד הקודם מחוק)
+    let upd;
+    if(!r.it.done){                                  // תפיסת פריט פנוי
+      const by = getName();
+      upd = {done:true, by, prevBy:(r.it.by && r.it.by!==by) ? r.it.by : (r.it.prevBy||""), at:TS()};
+    } else if(r.it.by === getName()){                // אני מבטל את ההצהרה שלי
+      upd = {done:false, by:"", prevBy:(r.it.by||r.it.prevBy||""), at:TS()};
+    } else {                                         // לקיחת אחריות במקום מישהו אחר → הקודם נשאר מחוק
+      const by = getName();
+      upd = {done:true, by, prevBy:r.it.by||"", at:TS()};
+    }
+    const li = document.querySelector(`li[data-uid="${u}"]`); if(li) li.classList.toggle("done", upd.done);
+    commit({ [P+"done"]:upd.done, [P+"by"]:upd.by, [P+"prevBy"]:upd.prevBy, [P+"at"]:upd.at });
+    return;
+  }
+
+  // קטגוריה רגילה — נגיעה/סימון בלבד אינה "עריכה", לכן לא רושמים שם
   const nd = !r.it.done;
   const li = document.querySelector(`li[data-uid="${u}"]`); if(li) li.classList.toggle("done", nd);
-  const cid = r.c.cid, by = getName();
-  commit({ [`cats/${cid}/items/${u}/done`]:nd, [`cats/${cid}/items/${u}/by`]:by, [`cats/${cid}/items/${u}/at`]:TS() });
+  commit({ [P+"done"]:nd });
 }
 function toggleInclude(cid){
   const c = state.find(x=>x.cid===cid); if(!c) return;
@@ -772,8 +793,12 @@ function toggleInclude(cid){
 function upd(u, field, val){
   const r = find(u); if(!r) return; r.it[field]=val;
   const cid = r.c.cid, by = getName();
+  const prevBy = (r.it.by && r.it.by!==by) ? r.it.by : (r.it.prevBy||"");   // עורך חדש → הקודם נשמר מחוק
   scheduleWrite(`${cid}|${u}|${field}`, ()=> commit({
-    [`cats/${cid}/items/${u}/${field}`]:val, [`cats/${cid}/items/${u}/by`]:by, [`cats/${cid}/items/${u}/at`]:TS()
+    [`cats/${cid}/items/${u}/${field}`]:val,
+    [`cats/${cid}/items/${u}/by`]:by,
+    [`cats/${cid}/items/${u}/prevBy`]:prevBy,
+    [`cats/${cid}/items/${u}/at`]:TS()
   }));
 }
 function updCat(cid, val){
