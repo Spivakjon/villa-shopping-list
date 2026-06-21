@@ -49,28 +49,33 @@
          box-shadow:0 0 0 3px rgba(55,214,122,.18);flex:none}
   .ppill.me .pdot{background:var(--accent2);box-shadow:0 0 0 3px rgba(47,169,255,.18)}
   /* timeline nav — horizontal (mobile) */
-  .topnav{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:2px;scrollbar-width:none}
+  .topnav{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:2px;scrollbar-width:none;align-items:center}
   .topnav::-webkit-scrollbar{display:none}
+  .topnav-lbl{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;flex:none;margin-inline-end:2px}
   .navchip{white-space:nowrap;font-size:12px;color:var(--muted);background:#161922;border:1px solid var(--line);
            padding:5px 11px;border-radius:99px;cursor:pointer;text-decoration:none;flex:none}
-  .navchip.active{color:var(--txt);border-color:var(--accent);background:var(--card2)}
-  /* timeline nav — vertical (desktop) */
+  .navchip.active{color:#031018;border-color:var(--accent);background:var(--accent);font-weight:700}
+  /* timeline nav — vertical (desktop): כרטיס צף ממורכז אנכית, ברור ונפרד מהכותרת */
   .sidenav{display:none}
-  .navhead{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:0 8px 6px}
-  @media(min-width:1120px){
+  .navhead{font-size:12px;font-weight:700;color:var(--txt);padding:0 6px 9px;margin-bottom:6px;
+           border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px}
+  @media(min-width:1240px){
     .topnav{display:none}
-    .sidenav{display:flex;flex-direction:column;gap:1px;position:fixed;top:120px;right:24px;
-             width:190px;max-height:72vh;overflow:auto;z-index:15}
+    .sidenav{display:flex;flex-direction:column;gap:2px;position:fixed;top:50%;transform:translateY(-50%);
+             right:24px;width:210px;max-height:84vh;overflow:auto;z-index:15;
+             background:var(--card);border:1px solid var(--line);border-radius:14px;
+             padding:12px 10px;box-shadow:var(--shadow)}
   }
-  .navitem{position:relative;display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;
-           color:var(--muted);font-size:13px;cursor:pointer;text-decoration:none;border-right:2px solid transparent}
-  .navitem::before{content:"";position:absolute;right:11px;top:-1px;bottom:-1px;width:2px;background:#262b35;z-index:-1}
+  .navitem{position:relative;display:flex;align-items:center;gap:10px;padding:8px 8px;border-radius:9px;
+           color:var(--muted);font-size:13px;cursor:pointer;text-decoration:none;border-right:3px solid transparent}
+  .navitem::before{content:"";position:absolute;right:13px;top:-2px;bottom:-2px;width:2px;background:#2c313c;z-index:0}
   .navitem:first-child::before{top:50%}
   .navitem:last-child::before{bottom:50%}
-  .navitem .navdot{width:9px;height:9px;border-radius:50%;background:#3a4150;flex:none;border:2px solid var(--bg)}
-  .navitem .navtxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .navitem.active{color:var(--txt);background:var(--card2);border-right-color:var(--accent)}
-  .navitem.active .navdot{background:var(--accent);box-shadow:0 0 0 3px rgba(55,214,122,.2)}
+  .navitem .navdot{position:relative;z-index:1;width:11px;height:11px;border-radius:50%;background:#3a4150;flex:none;border:2px solid var(--card)}
+  .navitem .navtxt{position:relative;z-index:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .navitem:hover{color:var(--txt);background:#20242e}
+  .navitem.active{color:var(--txt);background:var(--card2);border-right-color:var(--accent);font-weight:600}
+  .navitem.active .navdot{background:var(--accent);box-shadow:0 0 0 3px rgba(55,214,122,.25)}
   /* "מי מביא" category */
   .cat.bringcat{border-color:#2f5a7a;border-style:dashed}
   .cat.bringcat .cathead{background:#13202b}
@@ -701,10 +706,10 @@ function buildNav(){
   const side = document.getElementById("sidenav");
   const top  = document.getElementById("topnav");
   if(!side || !top) return;
-  side.innerHTML = `<div class="navhead">מסלול הרשימה</div>` + state.map(c=>
+  side.innerHTML = `<div class="navhead">📍 קטגוריות — קפיצה מהירה</div>` + state.map(c=>
     `<a class="navitem" data-cid="${c.cid}" onclick="jumpTo('${c.cid}')">
        <span class="navdot"></span><span class="navtxt">${esc(c.emoji)} ${esc(c.name)}</span></a>`).join("");
-  top.innerHTML = state.map(c=>
+  top.innerHTML = `<span class="topnav-lbl">📍 קפיצה:</span>` + state.map(c=>
     `<a class="navchip" data-cid="${c.cid}" onclick="jumpTo('${c.cid}')">${esc(c.emoji)} ${esc(c.name)}</a>`).join("");
   observeSections();
 }
